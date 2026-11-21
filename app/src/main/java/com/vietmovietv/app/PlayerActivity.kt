@@ -22,7 +22,7 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
 import com.vietmovietv.app.data.WatchHistoryManager
 
-@OptIn(UnstableApi::class)
+@OptIn(markerClass = [UnstableApi::class])
 class PlayerActivity : AppCompatActivity() {
 
     private lateinit var playerView: PlayerView
@@ -115,7 +115,7 @@ class PlayerActivity : AppCompatActivity() {
             override fun onPlayerError(error: PlaybackException) {
                 Toast.makeText(
                     this@PlayerActivity,
-                    "Lỗi phát video: ${error.errorCodeName}. Thử đổi server khác!",
+                    "Lỗi phát video (${error.errorCodeName}). Hãy bấm Back và chọn Server nguồn khác!",
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -177,16 +177,14 @@ class PlayerActivity : AppCompatActivity() {
                 }
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
                     if (!controllerVisible && exo != null) {
-                        val target = exo.currentPosition + 10_000L
-                        exo.seekTo(target)
+                        exo.seekTo(exo.currentPosition + 10_000L)
                         showSeekOsd("+10s")
                         return true
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
                     if (!controllerVisible && exo != null) {
-                        val target = (exo.currentPosition - 10_000L).coerceAtLeast(0L)
-                        exo.seekTo(target)
+                        exo.seekTo((exo.currentPosition - 10_000L).coerceAtLeast(0L))
                         showSeekOsd("-10s")
                         return true
                     }
@@ -220,7 +218,6 @@ class PlayerActivity : AppCompatActivity() {
         val pos = exo.currentPosition
         val duration = exo.duration
         val epName = episodeNames.getOrElse(currentEpisodeIndex) { "Tập ${currentEpisodeIndex + 1}" }
-        // If near end (<15s left), reset to 0 so next time starts fresh
         val savePos = if (duration > 30_000L && pos > duration - 15_000L) 0L else pos
         historyManager.saveProgress(movieSlug, serverIndex, currentEpisodeIndex, epName, savePos)
     }

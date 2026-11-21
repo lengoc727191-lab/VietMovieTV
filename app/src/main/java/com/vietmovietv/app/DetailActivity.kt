@@ -18,9 +18,8 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.vietmovietv.app.data.EpisodeData
 import com.vietmovietv.app.data.EpisodeServer
-import com.vietmovietv.app.data.MovieApiService
+import com.vietmovietv.app.data.MultiSourceRepository
 import com.vietmovietv.app.data.WatchHistoryManager
-import com.vietmovietv.app.data.resolveImageUrl
 import com.vietmovietv.app.ui.EpisodeAdapter
 import kotlinx.coroutines.launch
 
@@ -42,6 +41,7 @@ class DetailActivity : AppCompatActivity() {
 
     private var movieSlug: String = ""
     private var movieTitle: String = ""
+    private var preferredSource: String = ""
     private var servers: List<EpisodeServer> = emptyList()
     private var currentServerIndex = 0
     private var currentEpisodes: List<EpisodeData> = emptyList()
@@ -52,6 +52,7 @@ class DetailActivity : AppCompatActivity() {
 
         movieSlug = intent.getStringExtra("slug") ?: ""
         movieTitle = intent.getStringExtra("title") ?: ""
+        preferredSource = intent.getStringExtra("source") ?: ""
         historyManager = WatchHistoryManager(this)
 
         ivBackdrop = findViewById(R.id.ivBackdrop)
@@ -77,7 +78,7 @@ class DetailActivity : AppCompatActivity() {
             val savedEp = historyManager.getLastEpisodeIndex(movieSlug)
             val savedServer = historyManager.getLastServerIndex(movieSlug)
             val targetServer = if (savedServer in servers.indices) savedServer else currentServerIndex
-            val eps = getPlayableEpisodes(targetServer)
+            val eps = servers.getOrNull(targetServer)?.episodes ?: emptyList()
             val targetEp = if (savedEp in eps.indices) savedEp else 0
             openPlayer(targetServer, targetEp)
         }
@@ -101,36 +102,32 @@ class DetailActivity : AppCompatActivity() {
         progressBar.visibility = View.VISIBLE
         lifecycleScope.launch {
             try {
-                val res = MovieApiService.instance.getMovieDetail(slug)
-                val movie = res.movie
+                val agg = MultiSourceRepository.getAggregatedDetail(slug, preferredSource)
+                val movie = agg.movie
                 if (movie != null) {
-                    movieTitle = movie.name ?: movieTitle
+                    movieTitle = movie.name.ifBlank { movieTitle }
                     tvDetailTitle.text = movieTitle
 
-                    val metaParts = listOfNotNull(
-                        movie.originName?.takeIf { it.isNotBlank() },
-                        movie.year?.takeIf { it.isNotBlank() },
-                        movie.quality?.takeIf { it.isNotBlank() },
-                        movie.lang?.takeIf { it.isNotBlank() },
-                        movie.episodeCurrent?.takeIf { it.isNotBlank() }
-                    )
+                    val metaParts = listOf(
+                        movie.originName,
+                        movie.year,
+                        movie.quality,
+                        movie.lang,
+                        movie.episodeCurrent
+                    ).filter { it.isNotBlank() }
                     tvDetailMeta.text = metaParts.joinToString("  •  ")
 
                     val cleanDesc = HtmlCompat.fromHtml(
-                        movie.content ?: "",
+                        movie.content,
                         HtmlCompat.FROM_HTML_MODE_LEGACY
                     ).toString().trim()
                     tvDetailDesc.text = cleanDesc.ifBlank { "Chưa có mô tả cho phim này." }
 
-                    ivDetailPoster.load(resolveImageUrl(movie.posterUrl)) { crossfade(true) }
-                    ivBackdrop.load(resolveImageUrl(movie.thumbUrl?.takeIf { it.isNotBlank() } ?: movie.posterUrl)) {
-                        crossfade(true)
-                    }
+                    ivDetailPoster.load(movie.posterUrl.ifBlank { movie.thumbUrl }) { crossfade(true) }
+                    ivBackdrop.load(movie.thumbUrl.ifBlank { movie.posterUrl }) { crossfade(true) }
                 }
 
-                servers = res.episodes?.filter { server ->
-                    !server.serverData.isNullOrEmpty()
-                } ?: emptyList()
+                servers = agg.servers
 
                 if (servers.isNotEmpty()) {
                     val savedServer = historyManager.getLastServerIndex(movieSlug)
@@ -140,11 +137,11 @@ class DetailActivity : AppCompatActivity() {
                     updateContinueButton()
                     btnPlayNow.requestFocus()
                 } else {
-                    tvEpisodeHeader.text = "Chưa có tập phim khả dụng"
+                    tvEpisodeHeader.text = "Không tìm thấy luồng phát trực tiếp (.m3u8) từ các nguồn"
                     btnPlayNow.isEnabled = false
                 }
             } catch (e: Exception) {
-                Toast.makeText(this@DetailActivity, "Không tải được chi tiết phim: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@DetailActivity, "Lỗi tải chi tiết phim: ${e.message}", Toast.LENGTH_LONG).show()
             } finally {
                 progressBar.visibility = View.GONE
             }
@@ -155,17 +152,18 @@ class DetailActivity : AppCompatActivity() {
         serverContainer.removeAllViews()
         servers.forEachIndexed { idx, server ->
             val btn = Button(this).apply {
-                text = server.serverName ?: "Server ${idx + 1}"
+                text = server.serverName
                 isAllCaps = false
+                textSize = 13f
                 setTextColor(ContextCompat.getColor(this@DetailActivity, R.color.text_primary))
                 setBackgroundResource(R.drawable.bg_tab_selector)
                 isFocusable = true
-                setPadding(24, 8, 24, 8)
+                setPadding(20, 6, 20, 6)
                 val params = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     (40 * resources.displayMetrics.density).toInt()
                 )
-                params.marginEnd = (10 * resources.displayMetrics.density).toInt()
+                params.marginEnd = (8 * resources.displayMetrics.density).toInt()
                 layoutParams = params
                 setOnClickListener {
                     selectServer(idx)
@@ -181,16 +179,12 @@ class DetailActivity : AppCompatActivity() {
         for (i in 0 until serverContainer.childCount) {
             serverContainer.getChildAt(i).isSelected = (i == serverIdx)
         }
-        currentEpisodes = getPlayableEpisodes(serverIdx)
+        val srv = servers[serverIdx]
+        currentEpisodes = srv.episodes
         val savedServer = historyManager.getLastServerIndex(movieSlug)
         val savedEp = if (savedServer == serverIdx) historyManager.getLastEpisodeIndex(movieSlug) else -1
-        tvEpisodeHeader.text = "Danh sách tập (${currentEpisodes.size} tập)"
+        tvEpisodeHeader.text = "${srv.serverName}  •  ${currentEpisodes.size} tập (Đã gộp ${servers.size} server)"
         episodeAdapter.submitList(currentEpisodes, savedEp)
-    }
-
-    private fun getPlayableEpisodes(serverIdx: Int): List<EpisodeData> {
-        if (serverIdx !in servers.indices) return emptyList()
-        return servers[serverIdx].serverData?.filter { !it.linkM3u8.isNullOrBlank() } ?: emptyList()
     }
 
     private fun updateContinueButton() {
@@ -204,16 +198,16 @@ class DetailActivity : AppCompatActivity() {
     }
 
     private fun openPlayer(serverIdx: Int, epIndex: Int) {
-        val eps = getPlayableEpisodes(serverIdx)
+        val eps = servers.getOrNull(serverIdx)?.episodes ?: emptyList()
         if (eps.isEmpty() || epIndex !in eps.indices) {
-            Toast.makeText(this, "Tập này chưa có link phát trực tiếp (.m3u8)", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Tập này chưa có link phát (.m3u8)", Toast.LENGTH_SHORT).show()
             return
         }
         val names = ArrayList<String>(eps.size)
         val urls = ArrayList<String>(eps.size)
         eps.forEach {
-            names.add(it.name ?: "")
-            urls.add(it.linkM3u8 ?: "")
+            names.add(it.name)
+            urls.add(it.linkM3u8)
         }
 
         val intent = Intent(this, PlayerActivity::class.java).apply {

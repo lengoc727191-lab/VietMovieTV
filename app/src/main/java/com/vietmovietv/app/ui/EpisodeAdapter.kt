@@ -29,7 +29,7 @@ class EpisodeAdapter(
 
     override fun onBindViewHolder(holder: EpisodeViewHolder, position: Int) {
         val ep = episodes[position]
-        holder.tvName.text = ep.name?.takeIf { it.isNotBlank() } ?: "Tập ${position + 1}"
+        holder.tvName.text = ep.name.ifBlank { "Tập ${position + 1}" }
         holder.tvName.isSelected = (position == selectedIndex)
 
         holder.tvName.setOnClickListener {

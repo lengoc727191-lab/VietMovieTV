@@ -9,7 +9,6 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.vietmovietv.app.R
 import com.vietmovietv.app.data.MovieItem
-import com.vietmovietv.app.data.resolveImageUrl
 
 class MovieAdapter(
     private val onMovieClick: (MovieItem) -> Unit,
@@ -17,20 +16,31 @@ class MovieAdapter(
 ) : RecyclerView.Adapter<MovieAdapter.MovieViewHolder>() {
 
     private val items = mutableListOf<MovieItem>()
-    private var cdnDomain: String = "https://phimimg.com"
+    private val seenSlugs = HashSet<String>()
 
-    fun setMovies(newItems: List<MovieItem>, cdn: String = "https://phimimg.com") {
-        cdnDomain = cdn
+    fun setMovies(newItems: List<MovieItem>) {
         items.clear()
-        items.addAll(newItems)
+        seenSlugs.clear()
+        newItems.forEach {
+            if (seenSlugs.add(it.slug.lowercase())) {
+                items.add(it)
+            }
+        }
         notifyDataSetChanged()
     }
 
-    fun appendMovies(moreItems: List<MovieItem>, cdn: String = "https://phimimg.com") {
-        cdnDomain = cdn
-        val start = items.size
-        items.addAll(moreItems)
-        notifyItemRangeInserted(start, moreItems.size)
+    fun appendMovies(moreItems: List<MovieItem>) {
+        val added = mutableListOf<MovieItem>()
+        moreItems.forEach {
+            if (seenSlugs.add(it.slug.lowercase())) {
+                added.add(it)
+            }
+        }
+        if (added.isNotEmpty()) {
+            val start = items.size
+            items.addAll(added)
+            notifyItemRangeInserted(start, added.size)
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MovieViewHolder {
@@ -40,7 +50,7 @@ class MovieAdapter(
 
     override fun onBindViewHolder(holder: MovieViewHolder, position: Int) {
         val movie = items[position]
-        holder.bind(movie, cdnDomain)
+        holder.bind(movie)
 
         holder.itemView.setOnClickListener { onMovieClick(movie) }
 
@@ -60,28 +70,32 @@ class MovieAdapter(
     class MovieViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val ivPoster: ImageView = itemView.findViewById(R.id.ivPoster)
         private val tvBadge: TextView = itemView.findViewById(R.id.tvBadge)
+        private val tvSourceBadge: TextView = itemView.findViewById(R.id.tvSourceBadge)
         private val tvTitle: TextView = itemView.findViewById(R.id.tvTitle)
         private val tvSubTitle: TextView = itemView.findViewById(R.id.tvSubTitle)
 
-        fun bind(movie: MovieItem, cdnDomain: String) {
-            tvTitle.text = movie.name ?: "Không tên"
-            val yearText = movie.year?.takeIf { it.isNotBlank() } ?: ""
-            val originText = movie.originName?.takeIf { it.isNotBlank() } ?: ""
-            tvSubTitle.text = listOf(yearText, originText).filter { it.isNotBlank() }.joinToString(" • ")
+        fun bind(movie: MovieItem) {
+            tvTitle.text = movie.name.ifBlank { "Không tên" }
+            tvSubTitle.text = listOf(movie.year, movie.originName)
+                .filter { it.isNotBlank() }
+                .joinToString(" • ")
 
-            val badgeText = movie.episodeCurrent?.takeIf { it.isNotBlank() }
-                ?: movie.quality?.takeIf { it.isNotBlank() }
-            if (!badgeText.isNullOrBlank()) {
+            val badgeText = movie.episodeCurrent.ifBlank { movie.quality }
+            if (badgeText.isNotBlank()) {
                 tvBadge.text = badgeText
                 tvBadge.visibility = View.VISIBLE
             } else {
                 tvBadge.visibility = View.GONE
             }
 
-            val imgUrl = resolveImageUrl(
-                movie.posterUrl?.takeIf { it.isNotBlank() } ?: movie.thumbUrl,
-                cdnDomain
-            )
+            if (movie.sourceLabel.isNotBlank()) {
+                tvSourceBadge.text = movie.sourceLabel
+                tvSourceBadge.visibility = View.VISIBLE
+            } else {
+                tvSourceBadge.visibility = View.GONE
+            }
+
+            val imgUrl = movie.posterUrl.ifBlank { movie.thumbUrl }
             ivPoster.load(imgUrl) {
                 crossfade(true)
             }

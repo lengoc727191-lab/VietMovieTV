@@ -4,7 +4,6 @@
     android:layout_height="match_parent"
     android:background="@color/bg_dark">
 
-    <!-- Background Backdrop -->
     <ImageView
         android:id="@+id/ivBackdrop"
         android:layout_width="match_parent"
@@ -16,9 +15,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="28dp">
+        android:padding="26dp">
 
-        <!-- Top Movie Info Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -26,9 +24,9 @@
 
             <ImageView
                 android:id="@+id/ivDetailPoster"
-                android:layout_width="160dp"
-                android:layout_height="230dp"
-                android:layout_marginEnd="24dp"
+                android:layout_width="155dp"
+                android:layout_height="225dp"
+                android:layout_marginEnd="22dp"
                 android:background="#1F2937"
                 android:scaleType="centerCrop" />
 
@@ -45,7 +43,7 @@
                     android:ellipsize="end"
                     android:maxLines="2"
                     android:textColor="@color/text_primary"
-                    android:textSize="26sp"
+                    android:textSize="25sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -60,54 +58,60 @@
                     android:id="@+id/tvDetailDesc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="8dp"
                     android:ellipsize="end"
                     android:lineSpacingExtra="3dp"
                     android:maxLines="4"
                     android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
+                    android:textSize="13sp" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="12dp"
                     android:gravity="center_vertical"
                     android:orientation="horizontal">
 
                     <Button
                         android:id="@+id/btnPlayNow"
                         android:layout_width="wrap_content"
-                        android:layout_height="44dp"
-                        android:layout_marginEnd="14dp"
+                        android:layout_height="42dp"
+                        android:layout_marginEnd="12dp"
                         android:background="@drawable/bg_button_selector"
                         android:focusable="true"
-                        android:paddingStart="22dp"
-                        android:paddingEnd="22dp"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp"
                         android:text="Xem ngay"
                         android:textAllCaps="false"
                         android:textColor="@color/text_primary"
-                        android:textSize="15sp"
+                        android:textSize="14sp"
                         android:textStyle="bold" />
 
-                    <LinearLayout
-                        android:id="@+id/serverContainer"
-                        android:layout_width="wrap_content"
+                    <HorizontalScrollView
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal" />
+                        android:layout_weight="1"
+                        android:scrollbars="none">
+
+                        <LinearLayout
+                            android:id="@+id/serverContainer"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal" />
+                    </HorizontalScrollView>
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Episodes Section -->
         <TextView
             android:id="@+id/tvEpisodeHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp"
-            android:text="Danh sách tập phim"
+            android:text="Đang tìm nguồn phát từ KKPhim, OPhim, NguonC..."
             android:textColor="@color/text_primary"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <androidx.recyclerview.widget.RecyclerView
