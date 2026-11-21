@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.vietmovietv.app.data.EpisodeData
 import com.vietmovietv.app.data.EpisodeServer
+import com.vietmovietv.app.data.MovieDetail
 import com.vietmovietv.app.data.MultiSourceRepository
 import com.vietmovietv.app.data.WatchHistoryManager
 import com.vietmovietv.app.ui.EpisodeAdapter
@@ -42,6 +43,7 @@ class DetailActivity : AppCompatActivity() {
     private var movieSlug: String = ""
     private var movieTitle: String = ""
     private var preferredSource: String = ""
+    private var currentDetail: MovieDetail? = null
     private var servers: List<EpisodeServer> = emptyList()
     private var currentServerIndex = 0
     private var currentEpisodes: List<EpisodeData> = emptyList()
@@ -104,6 +106,7 @@ class DetailActivity : AppCompatActivity() {
             try {
                 val agg = MultiSourceRepository.getAggregatedDetail(slug, preferredSource)
                 val movie = agg.movie
+                currentDetail = movie
                 if (movie != null) {
                     movieTitle = movie.name.ifBlank { movieTitle }
                     tvDetailTitle.text = movieTitle
@@ -130,8 +133,9 @@ class DetailActivity : AppCompatActivity() {
                 servers = agg.servers
 
                 if (servers.isNotEmpty()) {
+                    val hasSaved = historyManager.getLastEpisodeIndex(movieSlug) >= 0
                     val savedServer = historyManager.getLastServerIndex(movieSlug)
-                    currentServerIndex = if (savedServer in servers.indices) savedServer else 0
+                    currentServerIndex = if (hasSaved && savedServer in servers.indices) savedServer else 0
                     buildServerButtons()
                     selectServer(currentServerIndex)
                     updateContinueButton()
@@ -151,11 +155,17 @@ class DetailActivity : AppCompatActivity() {
     private fun buildServerButtons() {
         serverContainer.removeAllViews()
         servers.forEachIndexed { idx, server ->
+            val isDub = server.isVietnameseDubbed()
             val btn = Button(this).apply {
-                text = server.serverName
+                text = if (isDub) "★ ${server.serverName}" else server.serverName
                 isAllCaps = false
                 textSize = 13f
-                setTextColor(ContextCompat.getColor(this@DetailActivity, R.color.text_primary))
+                setTextColor(
+                    ContextCompat.getColor(
+                        this@DetailActivity,
+                        if (isDub) R.color.accent_green else R.color.text_primary
+                    )
+                )
                 setBackgroundResource(R.drawable.bg_tab_selector)
                 isFocusable = true
                 setPadding(20, 6, 20, 6)
@@ -183,7 +193,8 @@ class DetailActivity : AppCompatActivity() {
         currentEpisodes = srv.episodes
         val savedServer = historyManager.getLastServerIndex(movieSlug)
         val savedEp = if (savedServer == serverIdx) historyManager.getLastEpisodeIndex(movieSlug) else -1
-        tvEpisodeHeader.text = "${srv.serverName}  •  ${currentEpisodes.size} tập (Đã gộp ${servers.size} server)"
+        val dubHint = if (srv.isVietnameseDubbed()) " • Đã ưu tiên Thuyết Minh thật" else " • Có thể bật Thuyết minh AI khi xem"
+        tvEpisodeHeader.text = "${srv.serverName}  •  ${currentEpisodes.size} tập$dubHint"
         episodeAdapter.submitList(currentEpisodes, savedEp)
     }
 
@@ -198,7 +209,8 @@ class DetailActivity : AppCompatActivity() {
     }
 
     private fun openPlayer(serverIdx: Int, epIndex: Int) {
-        val eps = servers.getOrNull(serverIdx)?.episodes ?: emptyList()
+        val srv = servers.getOrNull(serverIdx)
+        val eps = srv?.episodes ?: emptyList()
         if (eps.isEmpty() || epIndex !in eps.indices) {
             Toast.makeText(this, "Tập này chưa có link phát (.m3u8)", Toast.LENGTH_SHORT).show()
             return
@@ -210,9 +222,16 @@ class DetailActivity : AppCompatActivity() {
             urls.add(it.linkM3u8)
         }
 
+        val detail = currentDetail
         val intent = Intent(this, PlayerActivity::class.java).apply {
             putExtra("slug", movieSlug)
             putExtra("title", movieTitle)
+            putExtra("originName", detail?.originName ?: "")
+            putExtra("imdbId", detail?.imdbId ?: "")
+            putExtra("tmdbId", detail?.tmdbId ?: "")
+            putExtra("movieType", detail?.movieType ?: if (eps.size > 1) "tv" else "movie")
+            putExtra("season", detail?.season ?: 1)
+            putExtra("serverName", srv?.serverName ?: "")
             putExtra("serverIndex", serverIdx)
             putExtra("episodeIndex", epIndex)
             putStringArrayListExtra("episodeNames", names)

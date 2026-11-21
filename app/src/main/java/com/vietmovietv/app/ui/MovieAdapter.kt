@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.vietmovietv.app.R
 import com.vietmovietv.app.data.MovieItem
+import java.util.Locale
 
 class MovieAdapter(
     private val onMovieClick: (MovieItem) -> Unit,
@@ -76,7 +77,10 @@ class MovieAdapter(
 
         fun bind(movie: MovieItem) {
             tvTitle.text = movie.name.ifBlank { "Không tên" }
-            tvSubTitle.text = listOf(movie.year, movie.originName)
+            val ratingText = if (movie.tmdbRating > 0.0) {
+                String.format(Locale.US, "★ %.1f", movie.tmdbRating)
+            } else ""
+            tvSubTitle.text = listOf(movie.year, ratingText, movie.originName)
                 .filter { it.isNotBlank() }
                 .joinToString(" • ")
 

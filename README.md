@@ -1,4 +1,5 @@
-# VietMovie TV v2.0 (Đa nguồn KKPhim + OPhim + NguonC + Auto Release APK)
+# VietMovie TV v2.2 (Đa nguồn + Ưu tiên Thuyết Minh + Thuyết Minh AI miễn phí)
 
-- Tự động tổng hợp danh sách phim, tìm kiếm và gộp Server phát `.m3u8` song song từ 3 nguồn miễn phí: **KKPhim**, **OPhim**, **NguonC**.
-- Tự động xuất bản file `VietMovieTV.apk` lên **GitHub Releases (`latest`)** sau mỗi lần build để tải thẳng trên Android TV bằng ứng dụng **Downloader**.
+- Tự động tổng hợp 3 nguồn miễn phí: **KKPhim**, **OPhim**, **NguonC**.
+- **Cách 1:** Thêm tab **Thuyết Minh** riêng và tự động ưu tiên các server Thuyết Minh / Lồng Tiếng (gắn dấu ★ màu xanh) lên đầu khi mở phim.
+- **Cách 2:** Nút **Thuyết minh AI** trong trình phát tự tải phụ đề rời `.srt` (tự dịch tiếng Anh sang tiếng Việt nếu chỉ có phụ đề Anh), hỗ trợ đa giọng miễn phí (**Microsoft Edge Neural Hoài My / Nam Minh / Nữ Trầm Ấm / Nam Trầm**, **Google Nữ Online**, và **Google TTS đa giọng trên TV**), tự động hạ âm lượng phim gốc (Audio Ducking 25%) khi đọc thoại và chỉnh đồng bộ `-0.5s` / `+0.5s` bằng remote.

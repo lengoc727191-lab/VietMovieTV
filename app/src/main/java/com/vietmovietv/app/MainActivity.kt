@@ -28,6 +28,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter: MovieAdapter
 
     private lateinit var tabNew: Button
+    private lateinit var tabPopular: Button
+    private lateinit var tabDubbed: Button
     private lateinit var tabSeries: Button
     private lateinit var tabSingle: Button
     private lateinit var tabAnime: Button
@@ -52,6 +54,8 @@ class MainActivity : AppCompatActivity() {
         tvStatus = findViewById(R.id.tvStatus)
 
         tabNew = findViewById(R.id.tabNew)
+        tabPopular = findViewById(R.id.tabPopular)
+        tabDubbed = findViewById(R.id.tabDubbed)
         tabSeries = findViewById(R.id.tabSeries)
         tabSingle = findViewById(R.id.tabSingle)
         tabAnime = findViewById(R.id.tabAnime)
@@ -81,6 +85,8 @@ class MainActivity : AppCompatActivity() {
         rvMovies.adapter = adapter
 
         tabNew.setOnClickListener { selectCategory("new", "Phim mới cập nhật", tabNew) }
+        tabPopular.setOnClickListener { selectCategory("popular", "Phim xem nhiều nhất", tabPopular) }
+        tabDubbed.setOnClickListener { selectCategory("thuyet-minh", "Phim Thuyết Minh / Lồng Tiếng", tabDubbed) }
         tabSeries.setOnClickListener { selectCategory("phim-bo", "Phim Bộ", tabSeries) }
         tabSingle.setOnClickListener { selectCategory("phim-le", "Phim Lẻ", tabSingle) }
         tabAnime.setOnClickListener { selectCategory("hoat-hinh", "Hoạt Hình", tabAnime) }
@@ -105,7 +111,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSelectedTab(selectedButton: Button) {
-        val tabs = listOf(tabNew, tabSeries, tabSingle, tabAnime, tabTvShows, btnSearch)
+        val tabs = listOf(tabNew, tabPopular, tabDubbed, tabSeries, tabSingle, tabAnime, tabTvShows, btnSearch)
         tabs.forEach { it.isSelected = (it == selectedButton) }
     }
 

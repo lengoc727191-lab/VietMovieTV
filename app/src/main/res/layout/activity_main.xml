@@ -4,10 +4,10 @@
     android:layout_height="match_parent"
     android:background="@color/bg_dark"
     android:orientation="vertical"
-    android:paddingStart="24dp"
-    android:paddingTop="16dp"
-    android:paddingEnd="24dp"
-    android:paddingBottom="12dp">
+    android:paddingStart="22dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="22dp"
+    android:paddingBottom="10dp">
 
     <!-- Top Navigation Bar -->
     <LinearLayout
@@ -16,126 +16,167 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingBottom="12dp">
+        android:paddingBottom="10dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
+            android:layout_marginEnd="12dp"
             android:text="VIETMOVIE TV"
             android:textColor="@color/accent_amber"
-            android:textSize="20sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
-        <Button
-            android:id="@+id/tabNew"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_tab_selector"
-            android:focusable="true"
-            android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:text="Mới nhất"
-            android:textAllCaps="false"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/tabSeries"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_tab_selector"
-            android:focusable="true"
-            android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:text="Phim Bộ"
-            android:textAllCaps="false"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/tabSingle"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_tab_selector"
-            android:focusable="true"
-            android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:text="Phim Lẻ"
-            android:textAllCaps="false"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/tabAnime"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_tab_selector"
-            android:focusable="true"
-            android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:text="Hoạt Hình"
-            android:textAllCaps="false"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/tabTvShows"
-            android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_tab_selector"
-            android:focusable="true"
-            android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:text="TV Shows"
-            android:textAllCaps="false"
-            android:textColor="@color/text_primary"
-            android:textSize="13sp" />
-
-        <View
+        <HorizontalScrollView
             android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/tabNew"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="Mới nhất"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/tabPopular"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="Xem nhiều"
+                    android:textAllCaps="false"
+                    android:textColor="@color/accent_amber"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/tabDubbed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="Thuyết Minh"
+                    android:textAllCaps="false"
+                    android:textColor="@color/accent_green"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/tabSeries"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="Phim Bộ"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/tabSingle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="Phim Lẻ"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/tabAnime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="Hoạt Hình"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/tabTvShows"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="TV Shows"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </HorizontalScrollView>
 
         <Button
             android:id="@+id/btnSource"
             android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:layout_marginEnd="8dp"
+            android:layout_height="36dp"
+            android:layout_marginEnd="6dp"
             android:background="@drawable/bg_tab_selector"
             android:focusable="true"
             android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
             android:text="Nguồn: Tự động"
             android:textAllCaps="false"
             android:textColor="@color/accent_cyan"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
 
         <Button
             android:id="@+id/btnSearch"
             android:layout_width="wrap_content"
-            android:layout_height="38dp"
+            android:layout_height="36dp"
             android:background="@drawable/bg_tab_selector"
             android:focusable="true"
             android:minWidth="0dp"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
             android:text="Tìm kiếm"
             android:textAllCaps="false"
             android:textColor="@color/text_primary"
-            android:textSize="13sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 
     <!-- Status / Section Label -->
