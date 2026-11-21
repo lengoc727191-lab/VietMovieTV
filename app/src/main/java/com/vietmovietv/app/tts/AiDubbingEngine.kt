@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -35,6 +36,8 @@ import java.util.TimeZone
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 enum class TtsBackend {
     EDGE_NEURAL,
@@ -45,23 +48,26 @@ enum class TtsBackend {
 data class VoiceProfile(
     val id: String,
     val label: String,
+    val description: String,
     val backend: TtsBackend,
     val edgeVoiceName: String = "vi-VN-HoaiMyNeural",
-    val edgePitch: String = "+0Hz",
-    val edgeRate: String = "+14%",
+    val basePitchHz: Int = -5,
+    val baseRatePct: Int = 3,
+    val dualGenderAuto: Boolean = false,
     val systemVoiceName: String? = null,
-    val systemPitch: Float = 1.0f,
-    val systemRate: Float = 1.15f
+    val systemPitch: Float = 0.96f,
+    val systemRate: Float = 1.06f
 )
 
 class AiDubbingEngine(
     private val context: Context,
-    private val onDuckAudio: (Boolean) -> Unit
+    private val settings: DubSettingsManager,
+    private val onSetMovieVolume: (Float) -> Unit
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val cacheDir = File(context.cacheDir, "ai_dub_tts").apply { mkdirs() }
+    private val cacheDir = File(context.cacheDir, "ai_dub_v24").apply { mkdirs() }
     private val preloadedFiles = ConcurrentHashMap<String, File>()
 
     private val httpClient = OkHttpClient.Builder()
@@ -75,62 +81,95 @@ class AiDubbingEngine(
     private var currentSpeakJob: Job? = null
     private var isSpeaking = false
     private var edgeFailStreak = 0
+    private var alternatingMaleTurn = false
 
-    private val restoreAudioRunnable = Runnable {
+    private val duckVolume = 0.22f
+    private var currentMovieVolume = 1.0f
+    private var targetMovieVolume = 1.0f
+    private var volumeAnimRunnable: Runnable? = null
+
+    private val holdReleaseRunnable = Runnable {
         if (!isSpeaking) {
-            onDuckAudio(false)
+            animateMovieVolumeTo(1.0f, 650L)
         }
     }
 
     private val voices = mutableListOf(
         VoiceProfile(
-            id = "edge_hoaimy",
-            label = "Hoài My (Edge Nữ)",
+            id = "pro_nu_am",
+            label = "Nữ Thuyết Minh Ấm (Edge Pro)",
+            description = "Giọng nữ trầm ấm, lấy hơi tự nhiên — khuyên dùng",
             backend = TtsBackend.EDGE_NEURAL,
             edgeVoiceName = "vi-VN-HoaiMyNeural",
-            edgePitch = "+0Hz",
-            edgeRate = "+14%"
+            basePitchHz = -5,
+            baseRatePct = 3,
+            dualGenderAuto = false
         ),
         VoiceProfile(
-            id = "edge_namminh",
-            label = "Nam Minh (Edge Nam)",
-            backend = TtsBackend.EDGE_NEURAL,
-            edgeVoiceName = "vi-VN-NamMinhNeural",
-            edgePitch = "+0Hz",
-            edgeRate = "+14%"
-        ),
-        VoiceProfile(
-            id = "edge_nu_am",
-            label = "Nữ Trầm Ấm (Edge)",
+            id = "pro_doi_thoai",
+            label = "Nam - Nữ Đối Thoại Tự Động (Edge Pro)",
+            description = "Tự đổi giọng Nam / Nữ theo từng lượt thoại",
             backend = TtsBackend.EDGE_NEURAL,
             edgeVoiceName = "vi-VN-HoaiMyNeural",
-            edgePitch = "-8Hz",
-            edgeRate = "+8%"
+            basePitchHz = -3,
+            baseRatePct = 4,
+            dualGenderAuto = true
         ),
         VoiceProfile(
-            id = "edge_nam_tram",
-            label = "Nam Trầm (Edge)",
+            id = "pro_nam_tram",
+            label = "Nam Trầm Điện Ảnh (Edge Pro)",
+            description = "Giọng nam trầm sâu, hợp phim hành động & cổ trang",
             backend = TtsBackend.EDGE_NEURAL,
             edgeVoiceName = "vi-VN-NamMinhNeural",
-            edgePitch = "-6Hz",
-            edgeRate = "+8%"
+            basePitchHz = -6,
+            baseRatePct = 2,
+            dualGenderAuto = false
+        ),
+        VoiceProfile(
+            id = "pro_nu_nhe",
+            label = "Nữ Truyền Cảm Nhẹ Nhàng (Edge)",
+            description = "Nhịp chậm rãi, hợp phim tâm lý & tình cảm",
+            backend = TtsBackend.EDGE_NEURAL,
+            edgeVoiceName = "vi-VN-HoaiMyNeural",
+            basePitchHz = -2,
+            baseRatePct = -2,
+            dualGenderAuto = false
+        ),
+        VoiceProfile(
+            id = "edge_hoaimy_std",
+            label = "Hoài My Chuẩn (Edge Neural)",
+            description = "Giọng nữ sáng rõ nguyên bản Microsoft",
+            backend = TtsBackend.EDGE_NEURAL,
+            edgeVoiceName = "vi-VN-HoaiMyNeural",
+            basePitchHz = 0,
+            baseRatePct = 8,
+            dualGenderAuto = false
+        ),
+        VoiceProfile(
+            id = "edge_namminh_std",
+            label = "Nam Minh Chuẩn (Edge Neural)",
+            description = "Giọng nam dứt khoát nguyên bản Microsoft",
+            backend = TtsBackend.EDGE_NEURAL,
+            edgeVoiceName = "vi-VN-NamMinhNeural",
+            basePitchHz = 0,
+            baseRatePct = 8,
+            dualGenderAuto = false
         ),
         VoiceProfile(
             id = "google_web_vi",
-            label = "Google Nữ (Online)",
+            label = "Google Nữ Trực Tuyến (Online)",
+            description = "Ổn định cao, chạy tốt kể cả khi mạng yếu",
             backend = TtsBackend.GOOGLE_TRANSLATE_WEB
         ),
         VoiceProfile(
             id = "google_sys_default",
-            label = "Google TTS (TV)",
-            backend = TtsBackend.GOOGLE_SYSTEM,
-            systemVoiceName = null,
-            systemPitch = 1.0f,
-            systemRate = 1.15f
+            label = "Google TTS Hệ Thống TV",
+            description = "Đọc trực tiếp từ bộ máy TTS cài sẵn trên TV",
+            backend = TtsBackend.GOOGLE_SYSTEM
         )
     )
 
-    private var currentVoiceIndex = 0
+    private var currentVoiceIndex = settings.getSavedVoiceIndex().coerceIn(0, voices.size - 1)
 
     init {
         initAndroidTts()
@@ -156,11 +195,10 @@ class AiDubbingEngine(
                                     voices.add(
                                         VoiceProfile(
                                             id = "sys_vi_$idx",
-                                            label = "Google TV Giọng ${idx + 1}",
+                                            label = "Google TV Giọng ${idx + 1} (${v.name.takeLast(6)})",
+                                            description = "Giọng hệ thống tiếng Việt trên TV",
                                             backend = TtsBackend.GOOGLE_SYSTEM,
-                                            systemVoiceName = v.name,
-                                            systemPitch = 1.0f,
-                                            systemRate = 1.15f
+                                            systemVoiceName = v.name
                                         )
                                     )
                                 }
@@ -170,18 +208,10 @@ class AiDubbingEngine(
                     }
 
                     tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                        override fun onStart(utteranceId: String?) {
-                            markSpeakingStart()
-                        }
-
-                        override fun onDone(utteranceId: String?) {
-                            markSpeakingEnd()
-                        }
-
+                        override fun onStart(utteranceId: String?) = markSpeakingStart()
+                        override fun onDone(utteranceId: String?) = markSpeakingEnd()
                         @Deprecated("Deprecated in Java")
-                        override fun onError(utteranceId: String?) {
-                            markSpeakingEnd()
-                        }
+                        override fun onError(utteranceId: String?) = markSpeakingEnd()
                     })
                 }
             }
@@ -190,86 +220,177 @@ class AiDubbingEngine(
         }
     }
 
+    fun getAllVoices(): List<VoiceProfile> = synchronized(voices) {
+        voices.toList()
+    }
+
+    fun getCurrentVoiceIndex(): Int = synchronized(voices) {
+        currentVoiceIndex.coerceIn(voices.indices)
+    }
+
     fun getCurrentVoice(): VoiceProfile = synchronized(voices) {
         voices[currentVoiceIndex.coerceIn(voices.indices)]
     }
 
-    fun nextVoice(): VoiceProfile = synchronized(voices) {
-        currentVoiceIndex = (currentVoiceIndex + 1) % voices.size
+    fun selectVoice(index: Int): VoiceProfile = synchronized(voices) {
+        currentVoiceIndex = index.coerceIn(voices.indices)
+        settings.setSavedVoiceIndex(currentVoiceIndex)
         edgeFailStreak = 0
         clearPreloadCache()
         voices[currentVoiceIndex]
     }
 
-    fun preloadText(text: String) {
+    fun previewCurrentVoice() {
+        val sample = SubtitleCue(
+            startMs = 0L,
+            endMs = 3500L,
+            text = "Xin chào, đây là giọng thuyết minh phim bạn vừa chọn.",
+            spokenText = "Xin chào, đây là giọng thuyết minh phim bạn vừa chọn.",
+            emotion = "normal"
+        )
+        speakCue(sample, 3800L)
+    }
+
+    fun clearPreloadCache() {
+        preloadedFiles.clear()
+        cacheDir.listFiles()?.forEach { it.delete() }
+    }
+
+    private data class SpeechParams(
+        val edgeVoice: String,
+        val pitchHz: Int,
+        val ratePct: Int,
+        val cacheKey: String
+    )
+
+    private fun computeSpeechParams(cue: SubtitleCue, availableMs: Long, voice: VoiceProfile): SpeechParams {
+        val text = cue.spokenText.ifBlank { cue.text }
+
+        val chosenEdgeVoice = if (voice.dualGenderAuto) {
+            when (cue.gender) {
+                "M" -> "vi-VN-NamMinhNeural"
+                "F" -> "vi-VN-HoaiMyNeural"
+                else -> {
+                    if (cue.isDialogueSwitch) alternatingMaleTurn = !alternatingMaleTurn
+                    if (alternatingMaleTurn) "vi-VN-NamMinhNeural" else "vi-VN-HoaiMyNeural"
+                }
+            }
+        } else {
+            voice.edgeVoiceName
+        }
+
+        val sec = (availableMs.coerceIn(1100L, 9000L)) / 1000.0
+        val naturalCharsPerSec = 13.0
+        val neededMultiplier = (text.length / sec) / naturalCharsPerSec
+        val dynamicRate = when {
+            neededMultiplier <= 0.85 -> voice.baseRatePct - 3
+            neededMultiplier <= 1.05 -> voice.baseRatePct + 1
+            else -> ((neededMultiplier - 1.0) * 62.0).roundToInt() + voice.baseRatePct
+        }
+
+        val emotionPitchDelta = when (cue.emotion) {
+            "urgent", "excited" -> 4
+            "sad", "whisper" -> -4
+            "question" -> 2
+            else -> 0
+        }
+        val emotionRateDelta = when (cue.emotion) {
+            "urgent", "excited" -> 5
+            "sad", "whisper" -> -5
+            else -> 0
+        }
+
+        val finalPitch = (voice.basePitchHz + emotionPitchDelta).coerceIn(-12, 10)
+        val finalRate = (dynamicRate + emotionRateDelta).coerceIn(-10, 32)
+        val rateBucket = (finalRate / 4) * 4
+        val key = "${voice.id}_${chosenEdgeVoice}_${finalPitch}_${rateBucket}_${text.hashCode()}"
+        return SpeechParams(chosenEdgeVoice, finalPitch, rateBucket, key)
+    }
+
+    fun preloadCue(cue: SubtitleCue, availableMs: Long) {
         val voice = getCurrentVoice()
         if (voice.backend == TtsBackend.GOOGLE_SYSTEM) return
-        val clean = text.trim()
-        if (clean.length < 2) return
-        val key = "${voice.id}_${clean.hashCode()}"
-        if (preloadedFiles.containsKey(key)) return
+        val text = cue.spokenText.ifBlank { cue.text }.trim()
+        if (text.length < 2) return
+
+        val params = computeSpeechParams(cue, availableMs, voice)
+        if (preloadedFiles.containsKey(params.cacheKey)) return
 
         scope.launch {
-            val file = synthesizeAudioFile(clean, voice)
+            val file = when (voice.backend) {
+                TtsBackend.EDGE_NEURAL -> synthesizeEdgeMp3(text, params) ?: synthesizeGoogleWebMp3(text)
+                TtsBackend.GOOGLE_TRANSLATE_WEB -> synthesizeGoogleWebMp3(text)
+                TtsBackend.GOOGLE_SYSTEM -> null
+            }
             if (file != null && file.length() > 100L) {
-                preloadedFiles[key] = file
+                preloadedFiles[params.cacheKey] = file
             }
         }
     }
 
-    fun speak(text: String) {
-        val clean = text.trim()
-        if (clean.length < 2) return
+    fun speakCue(cue: SubtitleCue, availableMs: Long) {
+        val text = cue.spokenText.ifBlank { cue.text }.trim()
+        if (text.length < 2) return
 
         currentSpeakJob?.cancel()
         val voice = getCurrentVoice()
+        val params = computeSpeechParams(cue, availableMs, voice)
 
         currentSpeakJob = scope.launch {
-            when (voice.backend) {
-                TtsBackend.GOOGLE_SYSTEM -> {
-                    if (androidTtsReady) {
-                        speakViaAndroidTts(clean, voice)
-                    } else {
-                        val fallbackFile = synthesizeGoogleWebMp3(clean)
-                        if (fallbackFile != null) playAudioFile(fallbackFile)
-                    }
-                }
+            val fileToPlay: File? = when (voice.backend) {
+                TtsBackend.GOOGLE_SYSTEM -> null
                 TtsBackend.GOOGLE_TRANSLATE_WEB -> {
-                    val key = "${voice.id}_${clean.hashCode()}"
-                    val file = preloadedFiles.remove(key) ?: synthesizeGoogleWebMp3(clean)
-                    if (file != null) {
-                        playAudioFile(file)
-                    } else if (androidTtsReady) {
-                        speakViaAndroidTts(clean, voice)
-                    }
+                    preloadedFiles.remove(params.cacheKey) ?: synthesizeGoogleWebMp3(text)
                 }
                 TtsBackend.EDGE_NEURAL -> {
-                    val key = "${voice.id}_${clean.hashCode()}"
-                    val cached = preloadedFiles.remove(key)
-                    val file = cached ?: if (edgeFailStreak < 3) {
-                        val edgeFile = synthesizeEdgeMp3(clean, voice)
+                    preloadedFiles.remove(params.cacheKey) ?: if (edgeFailStreak < 3) {
+                        val edgeFile = synthesizeEdgeMp3(text, params)
                         if (edgeFile != null) {
                             edgeFailStreak = 0
                             edgeFile
                         } else {
                             edgeFailStreak++
-                            synthesizeGoogleWebMp3(clean)
+                            synthesizeGoogleWebMp3(text)
                         }
                     } else {
-                        synthesizeGoogleWebMp3(clean)
-                    }
-
-                    if (file != null) {
-                        playAudioFile(file)
-                    } else if (androidTtsReady) {
-                        speakViaAndroidTts(clean, voice)
+                        synthesizeGoogleWebMp3(text)
                     }
                 }
+            }
+
+            // Let previous sentence finish gracefully if within 450ms of ending
+            val remainingMs = getRemainingPlaybackMs()
+            if (remainingMs in 40L..450L) {
+                delay(remainingMs + 30L)
+            }
+
+            if (voice.backend == TtsBackend.GOOGLE_SYSTEM) {
+                if (androidTtsReady) {
+                    speakViaAndroidTts(text, voice, params.ratePct)
+                } else {
+                    val fallback = synthesizeGoogleWebMp3(text)
+                    if (fallback != null) playAudioFile(fallback)
+                }
+            } else if (fileToPlay != null) {
+                playAudioFile(fileToPlay)
+            } else if (androidTtsReady) {
+                speakViaAndroidTts(text, voice, params.ratePct)
             }
         }
     }
 
-    fun stopCurrentSpeech() {
+    private fun getRemainingPlaybackMs(): Long {
+        val mp = mediaPlayer ?: return 0L
+        return try {
+            if (mp.isPlaying && mp.duration > 0) {
+                (mp.duration - mp.currentPosition).toLong().coerceAtLeast(0L)
+            } else 0L
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    fun stopCurrentSpeech(restoreImmediately: Boolean = true) {
         currentSpeakJob?.cancel()
         mainHandler.post {
             try {
@@ -285,12 +406,15 @@ class AiDubbingEngine(
             } catch (_: Exception) {
             }
             isSpeaking = false
-            onDuckAudio(false)
+            mainHandler.removeCallbacks(holdReleaseRunnable)
+            if (restoreImmediately) {
+                animateMovieVolumeTo(1.0f, 250L)
+            }
         }
     }
 
     fun release() {
-        stopCurrentSpeech()
+        stopCurrentSpeech(restoreImmediately = true)
         scope.cancel()
         clearPreloadCache()
         try {
@@ -300,36 +424,60 @@ class AiDubbingEngine(
         }
     }
 
-    private fun clearPreloadCache() {
-        preloadedFiles.clear()
-        cacheDir.listFiles()?.forEach { it.delete() }
-    }
-
     private fun markSpeakingStart() {
-        mainHandler.removeCallbacks(restoreAudioRunnable)
+        mainHandler.removeCallbacks(holdReleaseRunnable)
         isSpeaking = true
-        mainHandler.post { onDuckAudio(true) }
+        mainHandler.post {
+            animateMovieVolumeTo(duckVolume, 200L)
+        }
     }
 
     private fun markSpeakingEnd() {
         isSpeaking = false
-        mainHandler.removeCallbacks(restoreAudioRunnable)
-        mainHandler.postDelayed(restoreAudioRunnable, 380L)
+        mainHandler.removeCallbacks(holdReleaseRunnable)
+        mainHandler.postDelayed(holdReleaseRunnable, 1800L)
     }
 
-    private fun speakViaAndroidTts(text: String, voice: VoiceProfile) {
+    private fun animateMovieVolumeTo(target: Float, durationMs: Long) {
+        if (abs(targetMovieVolume - target) < 0.01f && abs(currentMovieVolume - target) < 0.01f) {
+            return
+        }
+        targetMovieVolume = target
+        volumeAnimRunnable?.let { mainHandler.removeCallbacks(it) }
+
+        val startVol = currentMovieVolume
+        val steps = (durationMs / 25L).coerceAtLeast(1L).toInt()
+        var currentStep = 0
+
+        val r = object : Runnable {
+            override fun run() {
+                currentStep++
+                val frac = (currentStep.toFloat() / steps.toFloat()).coerceIn(0f, 1f)
+                val eased = 1f - (1f - frac) * (1f - frac)
+                currentMovieVolume = startVol + (target - startVol) * eased
+                onSetMovieVolume(currentMovieVolume)
+                if (currentStep < steps) {
+                    mainHandler.postDelayed(this, 25L)
+                }
+            }
+        }
+        volumeAnimRunnable = r
+        mainHandler.post(r)
+    }
+
+    private fun speakViaAndroidTts(text: String, voice: VoiceProfile, ratePct: Int) {
         mainHandler.post {
             val tts = androidTts ?: return@post
             try {
                 tts.setPitch(voice.systemPitch)
-                tts.setSpeechRate(voice.systemRate)
+                val rateFloat = (1.0f + ratePct / 100f).coerceIn(0.85f, 1.42f)
+                tts.setSpeechRate(rateFloat)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && voice.systemVoiceName != null) {
                     val matched: Voice? = tts.voices?.firstOrNull { it.name == voice.systemVoiceName }
                     if (matched != null) tts.voice = matched
                 }
                 markSpeakingStart()
-                val uid = "dub_${System.currentTimeMillis()}"
-                tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, uid)
+                tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "dub_${System.currentTimeMillis()}")
             } catch (_: Exception) {
                 markSpeakingEnd()
             }
@@ -379,16 +527,6 @@ class AiDubbingEngine(
         }
     }
 
-    private suspend fun synthesizeAudioFile(text: String, voice: VoiceProfile): File? {
-        return when (voice.backend) {
-            TtsBackend.EDGE_NEURAL -> synthesizeEdgeMp3(text, voice) ?: synthesizeGoogleWebMp3(text)
-            TtsBackend.GOOGLE_TRANSLATE_WEB -> synthesizeGoogleWebMp3(text)
-            TtsBackend.GOOGLE_SYSTEM -> null
-        }
-    }
-
-    // ==================== MICROSOFT EDGE NEURAL TTS (FREE) ====================
-
     private fun generateSecMsGec(): String {
         val winEpoch = 11644473600L
         var ticks = (System.currentTimeMillis() / 1000L) + winEpoch
@@ -399,16 +537,23 @@ class AiDubbingEngine(
         return digest.joinToString("") { "%02X".format(it) }
     }
 
-    private fun escapeXml(input: String): String {
-        return input
+    private fun buildSsmlBodyWithPauses(rawText: String): String {
+        val escaped = rawText
+            .take(360)
             .replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
             .replace("\"", "&quot;")
             .replace("'", "&apos;")
+        return escaped
+            .replace("...", "<break time='250ms'/>")
+            .replace("…", "<break time='250ms'/>")
+            .replace(" — ", "<break time='180ms'/>")
+            .replace(" - ", "<break time='150ms'/>")
+            .replace("; ", ", <break time='160ms'/>")
     }
 
-    private suspend fun synthesizeEdgeMp3(text: String, voice: VoiceProfile): File? = withContext(Dispatchers.IO) {
+    private suspend fun synthesizeEdgeMp3(text: String, params: SpeechParams): File? = withContext(Dispatchers.IO) {
         val connId = UUID.randomUUID().toString().replace("-", "")
         val reqId = UUID.randomUUID().toString().replace("-", "")
         val gec = generateSecMsGec()
@@ -444,10 +589,13 @@ class AiDubbingEngine(
                     "{\"context\":{\"synthesis\":{\"audio\":{\"metadataoptions\":{\"sentenceBoundaryEnabled\":\"false\",\"wordBoundaryEnabled\":\"false\"},\"outputFormat\":\"audio-24khz-48kbitrate-mono-mp3\"}}}}"
                 webSocket.send(configMsg)
 
-                val safeText = escapeXml(text.take(350))
+                val pitchStr = if (params.pitchHz >= 0) "+${params.pitchHz}Hz" else "${params.pitchHz}Hz"
+                val rateStr = if (params.ratePct >= 0) "+${params.ratePct}%" else "${params.ratePct}%"
+                val ssmlBody = buildSsmlBodyWithPauses(text)
+
                 val ssml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='vi-VN'>" +
-                    "<voice name='${voice.edgeVoiceName}'>" +
-                    "<prosody pitch='${voice.edgePitch}' rate='${voice.edgeRate}' volume='+0%'>$safeText</prosody>" +
+                    "<voice name='${params.edgeVoice}'>" +
+                    "<prosody pitch='$pitchStr' rate='$rateStr' volume='+0%'>$ssmlBody</prosody>" +
                     "</voice></speak>"
 
                 val ssmlMsg = "X-RequestId:$reqId\r\n" +
@@ -501,8 +649,6 @@ class AiDubbingEngine(
             null
         }
     }
-
-    // ==================== GOOGLE TRANSLATE WEB TTS FALLBACK (FREE) ====================
 
     private suspend fun synthesizeGoogleWebMp3(text: String): File? = withContext(Dispatchers.IO) {
         try {

@@ -22,6 +22,7 @@ import com.vietmovietv.app.data.MovieDetail
 import com.vietmovietv.app.data.MultiSourceRepository
 import com.vietmovietv.app.data.WatchHistoryManager
 import com.vietmovietv.app.ui.EpisodeAdapter
+import com.vietmovietv.app.ui.FocusEffects
 import kotlinx.coroutines.launch
 
 class DetailActivity : AppCompatActivity() {
@@ -69,6 +70,7 @@ class DetailActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.detailProgressBar)
 
         tvDetailTitle.text = movieTitle
+        FocusEffects.attachPopEffect(btnPlayNow, scaleUp = 1.08f, elevationPx = 16f)
 
         episodeAdapter = EpisodeAdapter { epIndex ->
             openPlayer(currentServerIndex, epIndex)
@@ -127,7 +129,7 @@ class DetailActivity : AppCompatActivity() {
                     tvDetailDesc.text = cleanDesc.ifBlank { "Chưa có mô tả cho phim này." }
 
                     ivDetailPoster.load(movie.posterUrl.ifBlank { movie.thumbUrl }) { crossfade(true) }
-                    ivBackdrop.load(movie.thumbUrl.ifBlank { movie.posterUrl }) { crossfade(true) }
+                    ivBackdrop.load(movie.thumbUrl.ifBlank { movie.posterUrl }) { crossfade(400) }
                 }
 
                 servers = agg.servers
@@ -159,7 +161,7 @@ class DetailActivity : AppCompatActivity() {
             val btn = Button(this).apply {
                 text = if (isDub) "★ ${server.serverName}" else server.serverName
                 isAllCaps = false
-                textSize = 13f
+                textSize = 12.5f
                 setTextColor(
                     ContextCompat.getColor(
                         this@DetailActivity,
@@ -168,10 +170,10 @@ class DetailActivity : AppCompatActivity() {
                 )
                 setBackgroundResource(R.drawable.bg_tab_selector)
                 isFocusable = true
-                setPadding(20, 6, 20, 6)
+                setPadding(24, 6, 24, 6)
                 val params = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
-                    (40 * resources.displayMetrics.density).toInt()
+                    (38 * resources.displayMetrics.density).toInt()
                 )
                 params.marginEnd = (8 * resources.displayMetrics.density).toInt()
                 layoutParams = params
@@ -179,6 +181,7 @@ class DetailActivity : AppCompatActivity() {
                     selectServer(idx)
                 }
             }
+            FocusEffects.attachPopEffect(btn, scaleUp = 1.08f, elevationPx = 14f)
             serverContainer.addView(btn)
         }
     }
@@ -202,9 +205,9 @@ class DetailActivity : AppCompatActivity() {
         val lastEpIdx = historyManager.getLastEpisodeIndex(movieSlug)
         val lastEpName = historyManager.getLastEpisodeName(movieSlug)
         btnPlayNow.text = if (lastEpIdx >= 0 && lastEpName.isNotBlank()) {
-            "Tiếp tục xem ($lastEpName)"
+            "▶ Tiếp tục ($lastEpName)"
         } else {
-            "Xem ngay"
+            "▶ Xem ngay"
         }
     }
 

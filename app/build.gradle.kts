@@ -11,13 +11,26 @@ android {
         applicationId = "com.vietmovietv.app"
         minSdk = 21
         targetSdk = 34
-        versionCode = 4
-        versionName = "2.2"
+        versionCode = 6
+        versionName = "2.4"
+    }
+
+    signingConfigs {
+        create("vietmovieFixed") {
+            storeFile = file("vietmovie.keystore")
+            storePassword = "vietmovie123"
+            keyAlias = "vietmovie"
+            keyPassword = "vietmovie123"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("vietmovieFixed")
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("vietmovieFixed")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -38,6 +51,7 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.cardview:cardview:1.0.0")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.google.android.material:material:1.12.0")
@@ -49,7 +63,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-hls:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
 
-    // OkHttp for fast multi-source API calls
+    // OkHttp
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Coil Image Loader

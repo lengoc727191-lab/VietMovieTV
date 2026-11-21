@@ -9,13 +9,18 @@ import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.net.URLEncoder
 import java.nio.charset.Charset
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 
 data class SubtitleCue(
     val startMs: Long,
     val endMs: Long,
-    val text: String
+    val text: String,
+    val spokenText: String = text,
+    val gender: String = "AUTO",
+    val emotion: String = "normal",
+    val isDialogueSwitch: Boolean = false
 )
 
 data class SubtitleFetchResult(
@@ -53,7 +58,6 @@ object SubtitleRepository {
             imdbId = lookupImdbId(originName.ifBlank { movieTitle })
         }
 
-        // 1. Try Stremio OpenSubtitles v3 (Free, no API key)
         if (imdbId.startsWith("tt")) {
             val stremioResult = fetchFromOpenSubtitlesV3(imdbId, isSeries, season, episodeNumber)
             if (stremioResult != null && stremioResult.cues.isNotEmpty()) {
@@ -61,7 +65,6 @@ object SubtitleRepository {
             }
         }
 
-        // 2. Try Wyzie Subs API (Free, supports both IMDb and TMDB IDs)
         val lookupId = imdbId.takeIf { it.startsWith("tt") } ?: tmdbIdInput.trim()
         if (lookupId.isNotBlank()) {
             val wyzieVi = fetchFromWyzie(lookupId, "vi", isSeries, season, episodeNumber)
@@ -71,11 +74,11 @@ object SubtitleRepository {
             val wyzieEn = fetchFromWyzie(lookupId, "en", isSeries, season, episodeNumber)
             if (wyzieEn != null && wyzieEn.cues.isNotEmpty()) {
                 val translated = translateCuesToVietnamese(wyzieEn.cues)
-                return@withContext SubtitleFetchResult(translated, "Phụ đề EN tự dịch sang Tiếng Việt")
+                return@withContext SubtitleFetchResult(translated, "Phụ đề EN dịch Tiếng Việt (${translated.size} câu)")
             }
         }
 
-        SubtitleFetchResult(emptyList(), "Không tìm thấy file phụ đề rời (.srt) cho tập này")
+        SubtitleFetchResult(emptyList(), "Không tìm thấy phụ đề rời (.srt) cho tập này")
     }
 
     private fun lookupImdbId(query: String): String {
@@ -126,17 +129,17 @@ object SubtitleRepository {
             }
             if (viUrl.isNotBlank()) {
                 val srt = httpGetText(viUrl) ?: return null
-                val cues = parseSubtitles(srt)
+                val cues = parseAndOptimizeSubtitles(srt)
                 if (cues.isNotEmpty()) {
                     return SubtitleFetchResult(cues, "OpenSubtitles Tiếng Việt (${cues.size} câu)")
                 }
             }
             if (enUrl.isNotBlank()) {
                 val srt = httpGetText(enUrl) ?: return null
-                val cues = parseSubtitles(srt)
+                val cues = parseAndOptimizeSubtitles(srt)
                 if (cues.isNotEmpty()) {
                     val viCues = translateCuesToVietnamese(cues)
-                    return SubtitleFetchResult(viCues, "OpenSubtitles EN -> dịch Tiếng Việt (${viCues.size} câu)")
+                    return SubtitleFetchResult(viCues, "OpenSubtitles EN dịch Tiếng Việt (${viCues.size} câu)")
                 }
             }
             null
@@ -162,7 +165,7 @@ object SubtitleRepository {
                 val subUrl = obj.optString("url", "")
                 if (subUrl.isBlank()) continue
                 val srt = httpGetText(subUrl) ?: continue
-                val cues = parseSubtitles(srt)
+                val cues = parseAndOptimizeSubtitles(srt)
                 if (cues.isNotEmpty()) {
                     return SubtitleFetchResult(cues, "Kho phụ đề Tiếng Việt (${cues.size} câu)")
                 }
@@ -185,7 +188,8 @@ object SubtitleRepository {
             val parts = translatedText?.split("|||")
             if (parts != null && parts.size == batch.size) {
                 for (i in batch.indices) {
-                    result.add(batch[i].copy(text = parts[i].trim().ifBlank { batch[i].text }))
+                    val vi = normalizeForVietnameseSpeech(parts[i].trim().ifBlank { batch[i].text })
+                    result.add(batch[i].copy(text = vi, spokenText = vi, emotion = detectEmotionHeuristic(vi)))
                 }
             } else {
                 result.addAll(batch)
@@ -231,22 +235,17 @@ object SubtitleRepository {
                 } else {
                     rawBytes
                 }
-                decodeText(bytes)
+                String(bytes, Charset.forName("UTF-8")).removePrefix("\uFEFF")
             }
         } catch (_: Exception) {
             null
         }
     }
 
-    private fun decodeText(bytes: ByteArray): String {
-        val utf8 = String(bytes, Charset.forName("UTF-8"))
-        return utf8.removePrefix("\uFEFF")
-    }
-
-    fun parseSubtitles(content: String): List<SubtitleCue> {
+    fun parseAndOptimizeSubtitles(content: String): List<SubtitleCue> {
         val normalized = content.replace("\r\n", "\n").replace("\r", "\n")
         val blocks = normalized.split(Regex("\n\\s*\n"))
-        val cues = mutableListOf<SubtitleCue>()
+        val rawCues = mutableListOf<SubtitleCue>()
 
         for (block in blocks) {
             val lines = block.trim().lines().map { it.trim() }.filter { it.isNotEmpty() }
@@ -275,13 +274,137 @@ object SubtitleRepository {
 
             if (timeLineIdx < 0 || timeLineIdx + 1 >= lines.size) continue
 
-            val rawText = lines.subList(timeLineIdx + 1, lines.size).joinToString(" ")
-            val cleaned = cleanSpokenText(rawText)
-            if (cleaned.length >= 2) {
-                cues.add(SubtitleCue(startMs, endMs.coerceAtLeast(startMs + 800L), cleaned))
+            val textLines = lines.subList(timeLineIdx + 1, lines.size)
+            val safeEnd = endMs.coerceAtLeast(startMs + 900L)
+
+            val dialogueTurns = splitTwoSpeakerLines(textLines)
+            if (dialogueTurns.size >= 2) {
+                val totalChars = dialogueTurns.sumOf { it.length }.coerceAtLeast(1)
+                val totalDur = safeEnd - startMs
+                var cursor = startMs
+                dialogueTurns.forEach { turnRaw ->
+                    val cleaned = cleanSpokenText(turnRaw)
+                    val partDur = ((totalDur * turnRaw.length) / totalChars).coerceAtLeast(650L)
+                    val partEnd = (cursor + partDur).coerceAtMost(safeEnd + 300L)
+                    if (cleaned.length >= 2) {
+                        rawCues.add(
+                            SubtitleCue(
+                                startMs = cursor,
+                                endMs = partEnd,
+                                text = cleaned,
+                                spokenText = cleaned,
+                                gender = guessGenderHeuristic(cleaned),
+                                emotion = detectEmotionHeuristic(cleaned),
+                                isDialogueSwitch = true
+                            )
+                        )
+                    }
+                    cursor = partEnd
+                }
+            } else {
+                val rawJoined = textLines.joinToString(" ")
+                val startsWithDash = rawJoined.trimStart().startsWith("-") || rawJoined.trimStart().startsWith("–")
+                val cleaned = cleanSpokenText(rawJoined)
+                if (cleaned.length >= 2) {
+                    rawCues.add(
+                        SubtitleCue(
+                            startMs = startMs,
+                            endMs = safeEnd,
+                            text = cleaned,
+                            spokenText = cleaned,
+                            gender = guessGenderHeuristic(cleaned),
+                            emotion = detectEmotionHeuristic(cleaned),
+                            isDialogueSwitch = startsWithDash
+                        )
+                    )
+                }
             }
         }
-        return cues.sortedBy { it.startMs }
+
+        val sorted = rawCues.sortedBy { it.startMs }
+        return mergeFragmentedSentences(sorted)
+    }
+
+    private fun splitTwoSpeakerLines(lines: List<String>): List<String> {
+        if (lines.size < 2) return emptyList()
+        val turns = mutableListOf<String>()
+        var dashCount = 0
+        for (l in lines) {
+            val trimmed = l.trim()
+            if (trimmed.startsWith("-") || trimmed.startsWith("–") || trimmed.startsWith("—")) {
+                dashCount++
+                turns.add(trimmed)
+            } else if (turns.isNotEmpty()) {
+                turns[turns.lastIndex] = turns.last() + " " + trimmed
+            } else {
+                turns.add(trimmed)
+            }
+        }
+        return if (dashCount >= 2 || (dashCount == 1 && turns.size >= 2)) turns else emptyList()
+    }
+
+    private fun mergeFragmentedSentences(cues: List<SubtitleCue>): List<SubtitleCue> {
+        if (cues.size <= 1) return cues
+        val merged = mutableListOf<SubtitleCue>()
+        var current = cues[0]
+
+        for (i in 1 until cues.size) {
+            val next = cues[i]
+            val gapMs = next.startMs - current.endMs
+            val combinedLen = current.text.length + 1 + next.text.length
+            val totalDur = next.endMs - current.startMs
+
+            val currTrim = current.text.trimEnd()
+            val endsComplete = currTrim.endsWith(".")
+                || currTrim.endsWith("!")
+                || currTrim.endsWith("?")
+                || currTrim.endsWith("…")
+                || currTrim.endsWith(":")
+
+            val shouldMerge = !endsComplete
+                && !next.isDialogueSwitch
+                && gapMs in -200L..650L
+                && combinedLen <= 145
+                && totalDur <= 7500L
+
+            if (shouldMerge) {
+                val joined = "${current.text} ${next.text}".replace(Regex("""\s+"""), " ").trim()
+                current = current.copy(
+                    endMs = next.endMs,
+                    text = joined,
+                    spokenText = joined,
+                    gender = guessGenderHeuristic(joined),
+                    emotion = detectEmotionHeuristic(joined)
+                )
+            } else {
+                merged.add(current)
+                current = next
+            }
+        }
+        merged.add(current)
+        return merged
+    }
+
+    fun guessGenderHeuristic(text: String): String {
+        val l = " " + text.lowercase() + " "
+        return when {
+            l.contains(" em yêu anh ") || l.contains(" em nhớ anh ") || l.contains(" anh ơi ") -> "F"
+            l.contains(" anh yêu em ") || l.contains(" anh nhớ em ") || l.contains(" em ơi ") -> "M"
+            else -> "AUTO"
+        }
+    }
+
+    fun detectEmotionHeuristic(text: String): String {
+        val lower = text.lowercase()
+        return when {
+            text.endsWith("!") || lower.contains("chạy đi") || lower.contains("cẩn thận")
+                || lower.contains("dừng lại") || lower.contains("cứu") || lower.contains("mau lên") -> "urgent"
+            text.contains("...") || text.contains("…") || lower.contains("xin lỗi")
+                || lower.contains("buồn") || lower.contains("nhớ anh") || lower.contains("nhớ em")
+                || lower.contains("vĩnh biệt") -> "sad"
+            text.endsWith("?") -> "question"
+            else -> "normal"
+        }
     }
 
     private fun toMs(h: String, m: String, s: String, ms: String): Long {
@@ -292,20 +415,47 @@ object SubtitleRepository {
         return ((hh * 3600L) + (mm * 60L) + ss) * 1000L + msPadded
     }
 
+    fun normalizeForVietnameseSpeech(input: String): String {
+        var s = input.trim()
+        if (s.isEmpty()) return ""
+        // If entire subtitle line is ALL CAPS (e.g. "CHẠY ĐI NGAY LẬP TỨC!"), convert to natural sentence case so TTS doesn't spell letters out
+        val letters = s.filter { it.isLetter() }
+        if (letters.length >= 6 && letters.all { it.isUpperCase() }) {
+            val low = s.lowercase(Locale("vi", "VN"))
+            s = low.replaceFirstChar { it.titlecase(Locale("vi", "VN")) }
+        }
+        s = s
+            .replace(Regex("""\bTP\.\s*"""), "Thành phố ")
+            .replace(Regex("""\bMr\.\s*""", RegexOption.IGNORE_CASE), "Ông ")
+            .replace(Regex("""\bMrs\.\s*""", RegexOption.IGNORE_CASE), "Bà ")
+            .replace(Regex("""\bDr\.\s*""", RegexOption.IGNORE_CASE), "Bác sĩ ")
+            .replace("\"", "")
+            .replace("*", "")
+            .replace("_", " ")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+        return s
+    }
+
     fun cleanSpokenText(raw: String): String {
         val noTags = tagRegex.replace(raw, " ")
         val noBrackets = noTags.replace(Regex("""\[[^\]]*]|\([^)]*\)"""), " ")
         val cleaned = noBrackets
             .replace("♪", "")
             .replace("♫", "")
-            .replace("...", ", ")
-            .replace(Regex("""^[-–—]\s*"""), "")
+            .replace(Regex("""^[-–—]+\s*"""), "")
             .replace(Regex("""\s+"""), " ")
             .trim()
         val lower = cleaned.lowercase()
-        if (lower.contains("subscene") || lower.contains("opensubtitles") || lower.contains("phudeviet")) {
+        if (lower.contains("subscene")
+            || lower.contains("opensubtitles")
+            || lower.contains("phudeviet")
+            || lower.contains("http://")
+            || lower.contains("https://")
+            || lower.contains("www.")
+        ) {
             return ""
         }
-        return cleaned
+        return normalizeForVietnameseSpeech(cleaned)
     }
 }

@@ -1,56 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
     android:background="@drawable/bg_card_selector"
     android:clickable="true"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:focusable="true"
     android:orientation="vertical"
-    android:padding="5dp">
+    android:padding="4dp">
 
-    <FrameLayout
+    <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
-        android:layout_height="205dp">
+        android:layout_height="205dp"
+        app:cardBackgroundColor="#12151E"
+        app:cardCornerRadius="11dp"
+        app:cardElevation="0dp"
+        app:cardPreventCornerOverlap="false">
 
-        <ImageView
-            android:id="@+id/ivPoster"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#111827"
-            android:scaleType="centerCrop" />
+            android:layout_height="match_parent">
 
-        <TextView
-            android:id="@+id/tvBadge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|start"
-            android:layout_margin="6dp"
-            android:background="@drawable/bg_badge"
-            android:paddingStart="6dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="6dp"
-            android:paddingBottom="2dp"
-            android:textColor="@color/accent_amber"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:visibility="gone" />
+            <ImageView
+                android:id="@+id/ivPoster"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop" />
 
-        <TextView
-            android:id="@+id/tvSourceBadge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:layout_margin="6dp"
-            android:background="@drawable/bg_badge"
-            android:paddingStart="5dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="5dp"
-            android:paddingBottom="2dp"
-            android:textColor="@color/accent_cyan"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-    </FrameLayout>
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_gravity="bottom"
+                android:background="@drawable/bg_poster_gradient" />
+
+            <TextView
+                android:id="@+id/tvBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|start"
+                android:layout_margin="6dp"
+                android:background="@drawable/bg_badge"
+                android:paddingStart="7dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="7dp"
+                android:paddingBottom="2dp"
+                android:textColor="@color/accent_amber"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvDubBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:layout_margin="6dp"
+                android:background="@drawable/bg_badge_dub"
+                android:paddingStart="7dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="7dp"
+                android:paddingBottom="2dp"
+                android:text="TM"
+                android:textColor="#FFFFFF"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvSourceBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="6dp"
+                android:background="@drawable/bg_badge"
+                android:paddingStart="6dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="6dp"
+                android:paddingBottom="2dp"
+                android:textColor="@color/accent_cyan"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </FrameLayout>
+    </androidx.cardview.widget.CardView>
 
     <TextView
         android:id="@+id/tvTitle"
@@ -59,22 +93,22 @@
         android:layout_marginTop="6dp"
         android:ellipsize="end"
         android:maxLines="1"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
         android:textColor="@color/text_primary"
-        android:textSize="14sp"
+        android:textSize="13sp"
         android:textStyle="bold" />
 
     <TextView
         android:id="@+id/tvSubTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="2dp"
+        android:layout_marginBottom="4dp"
         android:ellipsize="end"
         android:maxLines="1"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
         android:textColor="@color/text_secondary"
-        android:textSize="12sp" />
+        android:textSize="11sp" />
 
 </LinearLayout>

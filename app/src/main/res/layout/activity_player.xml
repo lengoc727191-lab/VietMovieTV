@@ -3,7 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:background="#000000"
+    android:clipChildren="false">
 
     <androidx.media3.ui.PlayerView
         android:id="@+id/playerView"
@@ -12,23 +13,26 @@
         app:show_buffering="when_playing"
         app:use_controller="true" />
 
-    <!-- Top Overlay Bar (syncs with PlayerView controller) -->
+    <!-- Top Overlay Bar -->
     <LinearLayout
         android:id="@+id/topOverlayBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
         android:background="@color/overlay_dark"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:orientation="vertical"
-        android:paddingStart="22dp"
+        android:paddingStart="24dp"
         android:paddingTop="12dp"
-        android:paddingEnd="22dp"
+        android:paddingEnd="24dp"
         android:paddingBottom="12dp"
         android:visibility="gone">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:clipChildren="false"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -46,13 +50,13 @@
             <Button
                 android:id="@+id/btnPrevEp"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
+                android:layout_height="35dp"
                 android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_button_selector"
+                android:background="@drawable/bg_tab_selector"
                 android:focusable="true"
                 android:minWidth="0dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
                 android:text="Tập trước"
                 android:textAllCaps="false"
                 android:textColor="@color/text_primary"
@@ -61,101 +65,112 @@
             <Button
                 android:id="@+id/btnNextEp"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:background="@drawable/bg_button_selector"
+                android:layout_height="35dp"
+                android:background="@drawable/bg_tab_selector"
                 android:focusable="true"
                 android:minWidth="0dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
                 android:text="Tập tiếp"
                 android:textAllCaps="false"
                 android:textColor="@color/text_primary"
                 android:textSize="12sp" />
         </LinearLayout>
 
-        <!-- AI Dubbing Control Row -->
-        <LinearLayout
+        <!-- Clean 1-Tap AI Dubbing Row (Voice Picker Popup + Sync) -->
+        <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:scrollbars="none">
 
-            <Button
-                android:id="@+id/btnAiDubToggle"
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_button_selector"
-                android:focusable="true"
-                android:minWidth="0dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:text="Thuyết minh AI: Tắt"
-                android:textAllCaps="false"
-                android:textColor="@color/accent_green"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/btnAiVoice"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_button_selector"
-                android:focusable="true"
-                android:minWidth="0dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:text="Giọng: Hoài My (Edge)"
-                android:textAllCaps="false"
-                android:textColor="@color/accent_cyan"
-                android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/btnSyncMinus"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:layout_marginEnd="6dp"
-                android:background="@drawable/bg_button_selector"
-                android:focusable="true"
-                android:minWidth="0dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:text="-0.5s"
-                android:textAllCaps="false"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/btnSyncPlus"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/bg_button_selector"
-                android:focusable="true"
-                android:minWidth="0dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:text="+0.5s"
-                android:textAllCaps="false"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/tvAiStatus"
-                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="Bấm 'Thuyết minh AI' khi phim chỉ có Vietsub"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-        </LinearLayout>
+                android:clipChildren="false"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnAiDubToggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="Thuyết minh AI: Tắt"
+                    android:textAllCaps="false"
+                    android:textColor="@color/accent_green"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btnAiVoice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="Chọn giọng AI ▾"
+                    android:textAllCaps="false"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btnSyncMinus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="11dp"
+                    android:paddingEnd="11dp"
+                    android:text="-0.5s"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btnSyncPlus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/bg_tab_selector"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="11dp"
+                    android:paddingEnd="11dp"
+                    android:text="+0.5s"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/tvAiStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="Ưu tiên bản Thuyết Minh thật • Bật AI khi chỉ có Vietsub"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </HorizontalScrollView>
     </LinearLayout>
 
-    <!-- Seek / AI OSD indicator -->
+    <!-- Seek / Voice OSD indicator -->
     <TextView
         android:id="@+id/tvSeekOsd"
         android:layout_width="wrap_content"
@@ -166,8 +181,8 @@
         android:paddingTop="12dp"
         android:paddingEnd="24dp"
         android:paddingBottom="12dp"
-        android:textColor="@color/accent_amber"
-        android:textSize="22sp"
+        android:textColor="@color/text_primary"
+        android:textSize="20sp"
         android:textStyle="bold"
         android:visibility="gone" />
 

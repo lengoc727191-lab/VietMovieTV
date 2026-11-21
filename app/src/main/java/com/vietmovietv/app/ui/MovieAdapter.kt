@@ -3,8 +3,11 @@ package com.vietmovietv.app.ui
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.vietmovietv.app.R
@@ -13,21 +16,37 @@ import java.util.Locale
 
 class MovieAdapter(
     private val onMovieClick: (MovieItem) -> Unit,
+    private val onMovieFocused: (MovieItem) -> Unit,
     private val onLoadMore: () -> Unit
 ) : RecyclerView.Adapter<MovieAdapter.MovieViewHolder>() {
 
     private val items = mutableListOf<MovieItem>()
     private val seenSlugs = HashSet<String>()
+    private val focusInInterpolator = OvershootInterpolator(1.1f)
+    private val focusOutInterpolator = DecelerateInterpolator()
 
     fun setMovies(newItems: List<MovieItem>) {
-        items.clear()
-        seenSlugs.clear()
+        val deduped = mutableListOf<MovieItem>()
+        val freshSlugs = HashSet<String>()
         newItems.forEach {
-            if (seenSlugs.add(it.slug.lowercase())) {
-                items.add(it)
+            if (freshSlugs.add(it.slug.lowercase())) {
+                deduped.add(it)
             }
         }
-        notifyDataSetChanged()
+        val oldList = items.toList()
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize(): Int = oldList.size
+            override fun getNewListSize(): Int = deduped.size
+            override fun areItemsTheSame(oldPos: Int, newPos: Int): Boolean =
+                oldList[oldPos].slug == deduped[newPos].slug
+            override fun areContentsTheSame(oldPos: Int, newPos: Int): Boolean =
+                oldList[oldPos] == deduped[newPos]
+        })
+        items.clear()
+        items.addAll(deduped)
+        seenSlugs.clear()
+        seenSlugs.addAll(freshSlugs)
+        diff.dispatchUpdatesTo(this)
     }
 
     fun appendMovies(moreItems: List<MovieItem>) {
@@ -56,12 +75,29 @@ class MovieAdapter(
         holder.itemView.setOnClickListener { onMovieClick(movie) }
 
         holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-            val scale = if (hasFocus) 1.07f else 1.0f
-            v.animate().scaleX(scale).scaleY(scale).setDuration(120).start()
-            v.elevation = if (hasFocus) 12f else 0f
-
-            if (hasFocus && position >= items.size - 10) {
-                onLoadMore()
+            v.animate().cancel()
+            if (hasFocus) {
+                v.elevation = 20f
+                v.translationZ = 14f
+                v.animate()
+                    .scaleX(1.08f)
+                    .scaleY(1.08f)
+                    .setDuration(180L)
+                    .setInterpolator(focusInInterpolator)
+                    .start()
+                onMovieFocused(movie)
+                if (position >= items.size - 10) {
+                    onLoadMore()
+                }
+            } else {
+                v.elevation = 0f
+                v.translationZ = 0f
+                v.animate()
+                    .scaleX(1.0f)
+                    .scaleY(1.0f)
+                    .setDuration(130L)
+                    .setInterpolator(focusOutInterpolator)
+                    .start()
             }
         }
     }
@@ -71,6 +107,7 @@ class MovieAdapter(
     class MovieViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val ivPoster: ImageView = itemView.findViewById(R.id.ivPoster)
         private val tvBadge: TextView = itemView.findViewById(R.id.tvBadge)
+        private val tvDubBadge: TextView = itemView.findViewById(R.id.tvDubBadge)
         private val tvSourceBadge: TextView = itemView.findViewById(R.id.tvSourceBadge)
         private val tvTitle: TextView = itemView.findViewById(R.id.tvTitle)
         private val tvSubTitle: TextView = itemView.findViewById(R.id.tvSubTitle)
@@ -92,6 +129,14 @@ class MovieAdapter(
                 tvBadge.visibility = View.GONE
             }
 
+            val dubTag = movie.getDubShortTag()
+            if (dubTag.isNotEmpty()) {
+                tvDubBadge.text = dubTag
+                tvDubBadge.visibility = View.VISIBLE
+            } else {
+                tvDubBadge.visibility = View.GONE
+            }
+
             if (movie.sourceLabel.isNotBlank()) {
                 tvSourceBadge.text = movie.sourceLabel
                 tvSourceBadge.visibility = View.VISIBLE
@@ -101,7 +146,8 @@ class MovieAdapter(
 
             val imgUrl = movie.posterUrl.ifBlank { movie.thumbUrl }
             ivPoster.load(imgUrl) {
-                crossfade(true)
+                crossfade(220)
+                size(320, 460)
             }
         }
     }

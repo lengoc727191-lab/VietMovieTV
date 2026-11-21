@@ -35,10 +35,7 @@ class EpisodeAdapter(
         holder.tvName.setOnClickListener {
             onEpisodeClick(position)
         }
-        holder.tvName.setOnFocusChangeListener { v, hasFocus ->
-            val scale = if (hasFocus) 1.08f else 1.0f
-            v.animate().scaleX(scale).scaleY(scale).setDuration(100).start()
-        }
+        FocusEffects.attachPopEffect(holder.tvName, scaleUp = 1.09f, elevationPx = 12f)
     }
 
     override fun getItemCount(): Int = episodes.size

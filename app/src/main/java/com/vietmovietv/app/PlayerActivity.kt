@@ -11,6 +11,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.OptIn
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
@@ -24,8 +25,10 @@ import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.ui.PlayerView
 import com.vietmovietv.app.data.WatchHistoryManager
 import com.vietmovietv.app.tts.AiDubbingEngine
+import com.vietmovietv.app.tts.DubSettingsManager
 import com.vietmovietv.app.tts.SubtitleCue
 import com.vietmovietv.app.tts.SubtitleRepository
+import com.vietmovietv.app.ui.FocusEffects
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -46,6 +49,7 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var tvSeekOsd: TextView
 
     private lateinit var historyManager: WatchHistoryManager
+    private lateinit var dubSettings: DubSettingsManager
     private lateinit var aiDubEngine: AiDubbingEngine
     private var player: ExoPlayer? = null
 
@@ -84,7 +88,7 @@ class PlayerActivity : AppCompatActivity() {
             if (aiDubEnabled) {
                 checkSubtitleSync()
             }
-            handler.postDelayed(this, 200L)
+            handler.postDelayed(this, 180L)
         }
     }
 
@@ -95,8 +99,9 @@ class PlayerActivity : AppCompatActivity() {
         enterFullscreen()
 
         historyManager = WatchHistoryManager(this)
-        aiDubEngine = AiDubbingEngine(this) { shouldDuck ->
-            player?.volume = if (shouldDuck) 0.25f else 1.0f
+        dubSettings = DubSettingsManager(this)
+        aiDubEngine = AiDubbingEngine(this, dubSettings) { vol ->
+            player?.volume = vol
         }
 
         movieSlug = intent.getStringExtra("slug") ?: ""
@@ -124,6 +129,9 @@ class PlayerActivity : AppCompatActivity() {
         tvAiStatus = findViewById(R.id.tvAiStatus)
         tvSeekOsd = findViewById(R.id.tvSeekOsd)
 
+        listOf(btnPrevEp, btnNextEp, btnAiDubToggle, btnAiVoice, btnSyncMinus, btnSyncPlus)
+            .forEach { FocusEffects.attachPopEffect(it, scaleUp = 1.08f, elevationPx = 12f) }
+
         playerView.setControllerVisibilityListener(
             PlayerView.ControllerVisibilityListener { visibility ->
                 topOverlayBar.visibility = visibility
@@ -149,9 +157,7 @@ class PlayerActivity : AppCompatActivity() {
         }
 
         btnAiVoice.setOnClickListener {
-            val next = aiDubEngine.nextVoice()
-            btnAiVoice.text = "Giọng: ${next.label}"
-            showSeekOsd("Giọng: ${next.label}")
+            showVoicePickerDialog()
         }
 
         btnSyncMinus.setOnClickListener {
@@ -164,11 +170,35 @@ class PlayerActivity : AppCompatActivity() {
             showSyncOsd()
         }
 
-        btnAiVoice.text = "Giọng: ${aiDubEngine.getCurrentVoice().label}"
+        updateVoiceButtonLabel()
         updateAiButtons()
 
         initPlayer()
         playEpisode(currentEpisodeIndex)
+    }
+
+    private fun updateVoiceButtonLabel() {
+        btnAiVoice.text = "Giọng: ${aiDubEngine.getCurrentVoice().label} ▾"
+    }
+
+    private fun showVoicePickerDialog() {
+        val allVoices = aiDubEngine.getAllVoices()
+        val items = allVoices.map { "${it.label}\n   ${it.description}" }.toTypedArray()
+        val currentIdx = aiDubEngine.getCurrentVoiceIndex()
+
+        AlertDialog.Builder(this)
+            .setTitle("Chọn giọng Thuyết Minh AI (${allVoices.size} giọng)")
+            .setSingleChoiceItems(items, currentIdx) { dialog, which ->
+                val chosen = aiDubEngine.selectVoice(which)
+                updateVoiceButtonLabel()
+                showSeekOsd("Đã chọn: ${chosen.label}")
+                dialog.dismiss()
+                if (!aiDubEnabled) {
+                    aiDubEngine.previewCurrentVoice()
+                }
+            }
+            .setNegativeButton("Đóng", null)
+            .show()
     }
 
     private fun initPlayer() {
@@ -199,14 +229,22 @@ class PlayerActivity : AppCompatActivity() {
                 val clean = SubtitleRepository.cleanSpokenText(raw)
                 if (clean.length >= 2 && clean != lastLiveCueText) {
                     lastLiveCueText = clean
-                    aiDubEngine.speak(clean)
+                    val liveCue = SubtitleCue(
+                        startMs = 0L,
+                        endMs = 3000L,
+                        text = clean,
+                        spokenText = clean,
+                        gender = SubtitleRepository.guessGenderHeuristic(clean),
+                        emotion = SubtitleRepository.detectEmotionHeuristic(clean)
+                    )
+                    aiDubEngine.speakCue(liveCue, 3000L)
                 }
             }
 
             override fun onPlayerError(error: PlaybackException) {
                 Toast.makeText(
                     this@PlayerActivity,
-                    "Lỗi phát video (${error.errorCodeName}). Hãy bấm Back và chọn Server nguồn khác!",
+                    "Lỗi phát video (${error.errorCodeName}). Bấm Back và chọn Server khác!",
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -217,6 +255,7 @@ class PlayerActivity : AppCompatActivity() {
         if (index !in episodeUrls.indices) return
         currentEpisodeIndex = index
         aiDubEngine.stopCurrentSpeech()
+        subtitleLoadJob?.cancel()
         subtitleCues = emptyList()
         lastSpokenCueIndex = -1
         lastLiveCueText = ""
@@ -229,7 +268,7 @@ class PlayerActivity : AppCompatActivity() {
         btnNextEp.visibility = if (index < episodeUrls.size - 1) View.VISIBLE else View.GONE
 
         val dataSourceFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36")
             .setAllowCrossProtocolRedirects(true)
 
         val mediaItem = MediaItem.fromUri(url)
@@ -254,9 +293,9 @@ class PlayerActivity : AppCompatActivity() {
         } else {
             val lowerSrv = serverName.lowercase()
             tvAiStatus.text = if (lowerSrv.contains("thuyết minh") || lowerSrv.contains("lồng tiếng")) {
-                "Đang phát bản Thuyết Minh / Lồng Tiếng gốc"
+                "Đang phát bản Thuyết Minh / Lồng Tiếng thật"
             } else {
-                "Bấm 'Thuyết minh AI' để đọc thoại từ phụ đề"
+                "Bấm 'Thuyết minh AI' hoặc 'Giọng' để chọn giọng đọc"
             }
         }
     }
@@ -269,12 +308,11 @@ class PlayerActivity : AppCompatActivity() {
             if (subtitleCues.isEmpty()) {
                 loadSubtitlesForCurrentEpisode()
             } else {
-                tvAiStatus.text = "Đang bật Thuyết minh AI (${subtitleCues.size} câu thoại)"
+                tvAiStatus.text = "Đang bật Thuyết minh AI (${subtitleCues.size} câu)"
             }
         } else {
             subtitleLoadJob?.cancel()
-            aiDubEngine.stopCurrentSpeech()
-            player?.volume = 1.0f
+            aiDubEngine.stopCurrentSpeech(restoreImmediately = true)
             tvAiStatus.text = "Đã tắt Thuyết minh AI"
             showSeekOsd("Đã tắt Thuyết minh AI")
         }
@@ -293,7 +331,7 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun loadSubtitlesForCurrentEpisode() {
         subtitleLoadJob?.cancel()
-        tvAiStatus.text = "Đang tìm phụ đề Tiếng Việt (OpenSubtitles / Wyzie)..."
+        tvAiStatus.text = "Đang tải & tối ưu câu thoại Tiếng Việt..."
         val epNum = extractEpisodeNumber()
 
         subtitleLoadJob = lifecycleScope.launch {
@@ -308,14 +346,15 @@ class PlayerActivity : AppCompatActivity() {
             )
             subtitleCues = result.cues
             lastSpokenCueIndex = -1
+
             if (subtitleCues.isNotEmpty()) {
                 tvAiStatus.text = "AI sẵn sàng • ${result.sourceInfo}"
                 showSeekOsd("Đã tải ${subtitleCues.size} câu thoại!")
             } else {
-                tvAiStatus.text = "${result.sourceInfo} (đang chờ phụ đề luồng nếu có)"
+                tvAiStatus.text = "${result.sourceInfo} (chờ phụ đề luồng nếu có)"
                 Toast.makeText(
                     this@PlayerActivity,
-                    "Không tìm thấy file phụ đề rời (.srt) cho tập này trên kho mở.",
+                    "Tập này chưa có phụ đề rời (.srt) trên kho mở.",
                     Toast.LENGTH_LONG
                 ).show()
             }
@@ -330,17 +369,27 @@ class PlayerActivity : AppCompatActivity() {
         val idx = findCueIndex(pos)
         if (idx >= 0 && idx != lastSpokenCueIndex) {
             val cue = subtitleCues[idx]
-            if (pos - cue.startMs <= 2500L) {
+            if (pos - cue.startMs <= 2600L) {
                 lastSpokenCueIndex = idx
-                aiDubEngine.speak(cue.text)
-                if (idx + 1 < subtitleCues.size) {
-                    aiDubEngine.preloadText(subtitleCues[idx + 1].text)
-                }
-                if (idx + 2 < subtitleCues.size) {
-                    aiDubEngine.preloadText(subtitleCues[idx + 2].text)
+                aiDubEngine.speakCue(cue, computeAvailableWindowMs(idx))
+                for (offset in 1..3) {
+                    val nextIdx = idx + offset
+                    if (nextIdx < subtitleCues.size) {
+                        aiDubEngine.preloadCue(subtitleCues[nextIdx], computeAvailableWindowMs(nextIdx))
+                    }
                 }
             }
         }
+    }
+
+    private fun computeAvailableWindowMs(idx: Int): Long {
+        val cue = subtitleCues[idx]
+        val cueDur = (cue.endMs - cue.startMs).coerceAtLeast(1000L)
+        if (idx + 1 < subtitleCues.size) {
+            val untilNext = subtitleCues[idx + 1].startMs - cue.startMs
+            return maxOf(cueDur, untilNext.coerceAtMost(cueDur + 1200L))
+        }
+        return cueDur + 800L
     }
 
     private fun findCueIndex(posMs: Long): Int {
@@ -442,7 +491,7 @@ class PlayerActivity : AppCompatActivity() {
         super.onResume()
         enterFullscreen()
         handler.postDelayed(saveProgressRunnable, 5000L)
-        handler.postDelayed(aiDubTickRunnable, 200L)
+        handler.postDelayed(aiDubTickRunnable, 180L)
     }
 
     override fun onPause() {

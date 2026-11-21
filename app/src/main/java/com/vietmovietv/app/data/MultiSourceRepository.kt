@@ -21,7 +21,7 @@ object MultiSourceRepository {
         .build()
 
     private const val USER_AGENT =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
     private suspend fun fetchJson(url: String): JSONObject? = withContext(Dispatchers.IO) {
         try {
@@ -52,20 +52,42 @@ object MultiSourceRepository {
         return "$base/$clean"
     }
 
-    private fun isDubbedLang(lang: String): Boolean {
-        val l = lang.lowercase()
-        return l.contains("thuyết minh") || l.contains("thuyet minh")
-            || l.contains("lồng tiếng") || l.contains("long tieng")
+    private fun buildFilterQuery(country: String, genre: String): String {
+        val sb = StringBuilder()
+        if (country.isNotBlank()) sb.append("&country=").append(URLEncoder.encode(country, "UTF-8"))
+        if (genre.isNotBlank()) sb.append("&category=").append(URLEncoder.encode(genre, "UTF-8"))
+        return sb.toString()
     }
 
     // ==================== 1. KKPHIM (phimapi.com) ====================
 
-    private suspend fun fetchKKPhimList(mode: String, page: Int): List<MovieItem> {
+    private suspend fun fetchKKPhimList(
+        mode: String,
+        page: Int,
+        country: String,
+        genre: String
+    ): List<MovieItem> {
+        val filterQ = buildFilterQuery(country, genre)
+
+        if (mode == "new") {
+            val url = when {
+                country.isNotBlank() -> {
+                    val extra = if (genre.isNotBlank()) "&category=$genre" else ""
+                    "https://phimapi.com/v1/api/quoc-gia/$country?page=$page&limit=24$extra"
+                }
+                genre.isNotBlank() -> {
+                    "https://phimapi.com/v1/api/the-loai/$genre?page=$page&limit=24"
+                }
+                else -> "https://phimapi.com/danh-sach/phim-moi-cap-nhat?page=$page"
+            }
+            val json = fetchJson(url) ?: return emptyList()
+            return parseStandardList(json, "https://phimimg.com", "KKPhim", isOphim = false)
+        }
+
         if (mode == "popular") {
             val urls = listOf(
-                "https://phimapi.com/v1/api/danh-sach/phim-vietsub?page=$page&sort_field=view&sort_type=desc&limit=24",
-                "https://phimapi.com/v1/api/danh-sach/phim-le?page=$page&sort_field=view&sort_type=desc&limit=24",
-                "https://phimapi.com/v1/api/danh-sach/phim-le?page=$page&limit=24"
+                "https://phimapi.com/v1/api/danh-sach/phim-vietsub?page=$page&sort_field=view&sort_type=desc&limit=24$filterQ",
+                "https://phimapi.com/v1/api/danh-sach/phim-le?page=$page&sort_field=view&sort_type=desc&limit=24$filterQ"
             )
             for (u in urls) {
                 val json = fetchJson(u) ?: continue
@@ -78,29 +100,25 @@ object MultiSourceRepository {
         if (mode == "thuyet-minh") {
             return coroutineScope {
                 val tm = async {
-                    fetchJson("https://phimapi.com/v1/api/danh-sach/phim-thuyet-minh?page=$page&limit=20")
+                    fetchJson("https://phimapi.com/v1/api/danh-sach/phim-thuyet-minh?page=$page&limit=20$filterQ")
                         ?.let { parseStandardList(it, "https://phimimg.com", "KKPhim", false) } ?: emptyList()
                 }
                 val lt = async {
-                    fetchJson("https://phimapi.com/v1/api/danh-sach/phim-long-tieng?page=$page&limit=12")
+                    fetchJson("https://phimapi.com/v1/api/danh-sach/phim-long-tieng?page=$page&limit=12$filterQ")
                         ?.let { parseStandardList(it, "https://phimimg.com", "KKPhim", false) } ?: emptyList()
                 }
-                mergeDistinctMovies(listOf(tm.await(), lt.await()))
+                mergeDistinctMovies(listOf(tm.await(), lt.await()), prioritizeDubbed = true)
             }
         }
 
-        val url = if (mode == "new") {
-            "https://phimapi.com/danh-sach/phim-moi-cap-nhat?page=$page"
-        } else {
-            "https://phimapi.com/v1/api/danh-sach/$mode?page=$page&limit=24"
-        }
+        val url = "https://phimapi.com/v1/api/danh-sach/$mode?page=$page&limit=24$filterQ"
         val json = fetchJson(url) ?: return emptyList()
         return parseStandardList(json, "https://phimimg.com", "KKPhim", isOphim = false)
     }
 
     private suspend fun searchKKPhim(keyword: String): List<MovieItem> {
         val q = URLEncoder.encode(keyword, "UTF-8")
-        val json = fetchJson("https://phimapi.com/v1/api/tim-kiem?keyword=$q&limit=25") ?: return emptyList()
+        val json = fetchJson("https://phimapi.com/v1/api/tim-kiem?keyword=$q&limit=30") ?: return emptyList()
         return parseStandardList(json, "https://phimimg.com", "KKPhim", isOphim = false)
     }
 
@@ -111,12 +129,33 @@ object MultiSourceRepository {
 
     // ==================== 2. OPHIM (ophim1.com) ====================
 
-    private suspend fun fetchOPhimList(mode: String, page: Int): List<MovieItem> {
+    private suspend fun fetchOPhimList(
+        mode: String,
+        page: Int,
+        country: String,
+        genre: String
+    ): List<MovieItem> {
+        val filterQ = buildFilterQuery(country, genre)
+
+        if (mode == "new") {
+            val url = when {
+                country.isNotBlank() -> {
+                    val extra = if (genre.isNotBlank()) "&category=$genre" else ""
+                    "https://ophim1.com/v1/api/quoc-gia/$country?page=$page$extra"
+                }
+                genre.isNotBlank() -> {
+                    "https://ophim1.com/v1/api/the-loai/$genre?page=$page"
+                }
+                else -> "https://ophim1.com/danh-sach/phim-moi-cap-nhat?page=$page"
+            }
+            val json = fetchJson(url) ?: return emptyList()
+            return parseStandardList(json, "https://img.ophim.live", "OPhim", isOphim = true)
+        }
+
         if (mode == "popular") {
             val urls = listOf(
-                "https://ophim1.com/v1/api/danh-sach/phim-chieu-rap?page=$page&sort_field=view&sort_type=desc",
-                "https://ophim1.com/v1/api/danh-sach/phim-bo?page=$page&sort_field=view&sort_type=desc",
-                "https://ophim1.com/v1/api/danh-sach/phim-chieu-rap?page=$page"
+                "https://ophim1.com/v1/api/danh-sach/phim-chieu-rap?page=$page&sort_field=view&sort_type=desc$filterQ",
+                "https://ophim1.com/v1/api/danh-sach/phim-bo?page=$page&sort_field=view&sort_type=desc$filterQ"
             )
             for (u in urls) {
                 val json = fetchJson(u) ?: continue
@@ -129,22 +168,18 @@ object MultiSourceRepository {
         if (mode == "thuyet-minh") {
             return coroutineScope {
                 val tm = async {
-                    fetchJson("https://ophim1.com/v1/api/danh-sach/phim-thuyet-minh?page=$page")
+                    fetchJson("https://ophim1.com/v1/api/danh-sach/phim-thuyet-minh?page=$page$filterQ")
                         ?.let { parseStandardList(it, "https://img.ophim.live", "OPhim", true) } ?: emptyList()
                 }
                 val lt = async {
-                    fetchJson("https://ophim1.com/v1/api/danh-sach/phim-long-tieng?page=$page")
+                    fetchJson("https://ophim1.com/v1/api/danh-sach/phim-long-tieng?page=$page$filterQ")
                         ?.let { parseStandardList(it, "https://img.ophim.live", "OPhim", true) } ?: emptyList()
                 }
-                mergeDistinctMovies(listOf(tm.await(), lt.await()))
+                mergeDistinctMovies(listOf(tm.await(), lt.await()), prioritizeDubbed = true)
             }
         }
 
-        val url = if (mode == "new") {
-            "https://ophim1.com/danh-sach/phim-moi-cap-nhat?page=$page"
-        } else {
-            "https://ophim1.com/v1/api/danh-sach/$mode?page=$page"
-        }
+        val url = "https://ophim1.com/v1/api/danh-sach/$mode?page=$page$filterQ"
         val json = fetchJson(url) ?: return emptyList()
         return parseStandardList(json, "https://img.ophim.live", "OPhim", isOphim = true)
     }
@@ -164,7 +199,42 @@ object MultiSourceRepository {
 
     // ==================== 3. NGUONC (phim.nguonc.com) ====================
 
-    private suspend fun fetchNguonCList(mode: String, page: Int): List<MovieItem> {
+    private suspend fun fetchNguonCList(
+        mode: String,
+        page: Int,
+        country: String,
+        genre: String,
+        allowFallbackOnCombined: Boolean
+    ): List<MovieItem> {
+        val hasCountry = country.isNotBlank()
+        val hasGenre = genre.isNotBlank()
+
+        // NguonC API only supports single-criterion filtering cleanly.
+        // In AUTO mode, skip NguonC when combined category+filter is active so KKPhim+OPhim return exact matches.
+        if (!allowFallbackOnCombined) {
+            if (hasCountry && hasGenre) return emptyList()
+            if (mode != "new" && (hasCountry || hasGenre)) return emptyList()
+        }
+
+        if (mode == "new" && hasCountry) {
+            val json = fetchJson("https://phim.nguonc.com/api/films/quoc-gia/$country?page=$page") ?: return emptyList()
+            return parseNguonCList(json)
+        }
+        if (mode == "new" && hasGenre) {
+            val json = fetchJson("https://phim.nguonc.com/api/films/the-loai/$genre?page=$page") ?: return emptyList()
+            return parseNguonCList(json)
+        }
+
+        if (allowFallbackOnCombined && (hasCountry || hasGenre)) {
+            val url = if (hasCountry) {
+                "https://phim.nguonc.com/api/films/quoc-gia/$country?page=$page"
+            } else {
+                "https://phim.nguonc.com/api/films/the-loai/$genre?page=$page"
+            }
+            val json = fetchJson(url) ?: return emptyList()
+            return parseNguonCList(json)
+        }
+
         if (mode == "popular") {
             val urls = listOf(
                 "https://phim.nguonc.com/api/films/danh-sach/phim-dang-chieu?page=$page",
@@ -186,7 +256,7 @@ object MultiSourceRepository {
             val collected = mutableListOf<MovieItem>()
             for (u in urls) {
                 val json = fetchJson(u) ?: continue
-                collected.addAll(parseNguonCList(json).filter { isDubbedLang(it.lang) })
+                collected.addAll(parseNguonCList(json).filter { it.isVietnameseDubbed() })
             }
             return collected
         }
@@ -257,6 +327,16 @@ object MultiSourceRepository {
 
     // ==================== PARSERS ====================
 
+    private fun extractSlugArray(arr: JSONArray?): List<String> {
+        if (arr == null) return emptyList()
+        val list = mutableListOf<String>()
+        for (i in 0 until arr.length()) {
+            val s = arr.optJSONObject(i)?.optString("slug", "")?.trim() ?: ""
+            if (s.isNotBlank()) list.add(s)
+        }
+        return list
+    }
+
     private fun parseStandardList(
         json: JSONObject,
         defaultCdn: String,
@@ -299,7 +379,9 @@ object MultiSourceRepository {
                     viewCount = views,
                     tmdbVoteCount = voteCnt,
                     tmdbRating = voteAvg,
-                    isCinema = cinema
+                    isCinema = cinema,
+                    countrySlugs = extractSlugArray(obj.optJSONArray("country")),
+                    genreSlugs = extractSlugArray(obj.optJSONArray("category"))
                 )
             )
         }
@@ -415,41 +497,56 @@ object MultiSourceRepository {
 
     // ==================== PUBLIC AGGREGATED METHODS ====================
 
-    suspend fun getMovies(source: MovieSource, mode: String, page: Int): List<MovieItem> = coroutineScope {
+    suspend fun getMovies(
+        source: MovieSource,
+        mode: String,
+        page: Int,
+        country: String = "",
+        genre: String = ""
+    ): List<MovieItem> = coroutineScope {
         val rawList = when (source) {
-            MovieSource.KKPHIM -> fetchKKPhimList(mode, page)
-            MovieSource.OPHIM -> fetchOPhimList(mode, page)
-            MovieSource.NGUONC -> fetchNguonCList(mode, page)
+            MovieSource.KKPHIM -> fetchKKPhimList(mode, page, country, genre)
+            MovieSource.OPHIM -> fetchOPhimList(mode, page, country, genre)
+            MovieSource.NGUONC -> fetchNguonCList(mode, page, country, genre, allowFallbackOnCombined = true)
             MovieSource.AUTO -> {
                 val results = listOf(
-                    async { fetchKKPhimList(mode, page) },
-                    async { fetchOPhimList(mode, page) },
-                    async { fetchNguonCList(mode, page) }
+                    async { fetchKKPhimList(mode, page, country, genre) },
+                    async { fetchOPhimList(mode, page, country, genre) },
+                    async { fetchNguonCList(mode, page, country, genre, allowFallbackOnCombined = false) }
                 ).awaitAll()
-                mergeDistinctMovies(results)
+                mergeDistinctMovies(results, prioritizeDubbed = true)
             }
         }
 
         if (mode == "popular") {
             rankByPopularity(rawList)
         } else {
-            rawList
+            // Prioritize real dubbed (Thuyết Minh / Lồng Tiếng) movies near the top within each page
+            rawList.sortedByDescending { if (it.isVietnameseDubbed()) 1 else 0 }
         }
     }
 
     private fun rankByPopularity(list: List<MovieItem>): List<MovieItem> {
         val hasMetrics = list.any { it.viewCount > 0L || it.tmdbVoteCount > 0 || it.tmdbRating > 0.0 }
-        if (!hasMetrics) return list
+        if (!hasMetrics) {
+            return list.sortedByDescending { if (it.isVietnameseDubbed()) 1 else 0 }
+        }
         return list.sortedWith(
             compareByDescending<MovieItem> { it.viewCount }
                 .thenByDescending { it.tmdbVoteCount }
+                .thenByDescending { if (it.isVietnameseDubbed()) 1 else 0 }
                 .thenByDescending { if (it.isCinema) 1 else 0 }
                 .thenByDescending { it.tmdbRating }
         )
     }
 
-    suspend fun searchMovies(source: MovieSource, keyword: String): List<MovieItem> = coroutineScope {
-        when (source) {
+    suspend fun searchMovies(
+        source: MovieSource,
+        keyword: String,
+        country: String = "",
+        genre: String = ""
+    ): List<MovieItem> = coroutineScope {
+        val raw = when (source) {
             MovieSource.KKPHIM -> searchKKPhim(keyword)
             MovieSource.OPHIM -> searchOPhim(keyword)
             MovieSource.NGUONC -> searchNguonC(keyword)
@@ -459,9 +556,18 @@ object MultiSourceRepository {
                     async { searchOPhim(keyword) },
                     async { searchNguonC(keyword) }
                 ).awaitAll()
-                mergeDistinctMovies(results)
+                mergeDistinctMovies(results, prioritizeDubbed = true)
             }
         }
+
+        // Apply optional country & genre filtering to search results if metadata is present
+        val filtered = raw.filter { item ->
+            val okCountry = country.isBlank() || item.countrySlugs.isEmpty() || item.countrySlugs.contains(country)
+            val okGenre = genre.isBlank() || item.genreSlugs.isEmpty() || item.genreSlugs.contains(genre)
+            okCountry && okGenre
+        }
+        val finalList = if (filtered.isNotEmpty() || (country.isBlank() && genre.isBlank())) filtered else raw
+        finalList.sortedByDescending { if (it.isVietnameseDubbed()) 1 else 0 }
     }
 
     suspend fun getAggregatedDetail(slug: String, preferredSource: String = ""): AggregatedDetail = coroutineScope {
@@ -500,7 +606,7 @@ object MultiSourceRepository {
             }
         }
 
-        // Prioritize Thuyết Minh (0) -> Lồng Tiếng (1) -> Vietsub / Others (2)
+        // Always put Real Vietnamese Dubbed servers first: Thuyết Minh (0) -> Lồng Tiếng (1) -> Vietsub (2)
         val prioritizedServers = allServers.sortedBy { srv ->
             val lower = srv.serverName.lowercase()
             when {
@@ -513,21 +619,24 @@ object MultiSourceRepository {
         AggregatedDetail(bestMovie, prioritizedServers, activeSources)
     }
 
-    private fun mergeDistinctMovies(lists: List<List<MovieItem>>): List<MovieItem> {
-        val seen = LinkedHashSet<String>()
-        val merged = mutableListOf<MovieItem>()
+    private fun mergeDistinctMovies(lists: List<List<MovieItem>>, prioritizeDubbed: Boolean): List<MovieItem> {
+        val bySlug = LinkedHashMap<String, MovieItem>()
         val maxLen = lists.maxOfOrNull { it.size } ?: 0
         for (idx in 0 until maxLen) {
             for (list in lists) {
                 if (idx < list.size) {
                     val item = list[idx]
                     val key = item.slug.lowercase()
-                    if (seen.add(key)) {
-                        merged.add(item)
+                    val existing = bySlug[key]
+                    if (existing == null) {
+                        bySlug[key] = item
+                    } else if (prioritizeDubbed && !existing.isVietnameseDubbed() && item.isVietnameseDubbed()) {
+                        // Prefer the dubbed version metadata if duplicate exists across sources
+                        bySlug[key] = item
                     }
                 }
             }
         }
-        return merged
+        return bySlug.values.toList()
     }
 }
