@@ -5,10 +5,10 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
@@ -28,12 +28,12 @@ import kotlinx.coroutines.launch
 class DetailActivity : AppCompatActivity() {
 
     private lateinit var ivBackdrop: ImageView
-    private lateinit var ivDetailPoster: ImageView
+    private lateinit var tvDetailTag: TextView
     private lateinit var tvDetailTitle: TextView
     private lateinit var tvDetailMeta: TextView
     private lateinit var tvDetailDesc: TextView
     private lateinit var btnPlayNow: Button
-    private lateinit var serverContainer: LinearLayout
+    private lateinit var btnChooseServer: Button
     private lateinit var tvEpisodeHeader: TextView
     private lateinit var rvEpisodes: RecyclerView
     private lateinit var progressBar: ProgressBar
@@ -59,18 +59,32 @@ class DetailActivity : AppCompatActivity() {
         historyManager = WatchHistoryManager(this)
 
         ivBackdrop = findViewById(R.id.ivBackdrop)
-        ivDetailPoster = findViewById(R.id.ivDetailPoster)
+        tvDetailTag = findViewById(R.id.tvDetailTag)
         tvDetailTitle = findViewById(R.id.tvDetailTitle)
         tvDetailMeta = findViewById(R.id.tvDetailMeta)
         tvDetailDesc = findViewById(R.id.tvDetailDesc)
         btnPlayNow = findViewById(R.id.btnPlayNow)
-        serverContainer = findViewById(R.id.serverContainer)
+        btnChooseServer = findViewById(R.id.btnChooseServer)
         tvEpisodeHeader = findViewById(R.id.tvEpisodeHeader)
         rvEpisodes = findViewById(R.id.rvEpisodes)
         progressBar = findViewById(R.id.detailProgressBar)
 
         tvDetailTitle.text = movieTitle
-        FocusEffects.attachPopEffect(btnPlayNow, scaleUp = 1.08f, elevationPx = 16f)
+        FocusEffects.attachPopEffect(btnPlayNow, scaleUp = 1.05f, elevationPx = 14f)
+
+        btnChooseServer.setOnFocusChangeListener { v, hasFocus ->
+            v.animate().cancel()
+            val b = v as Button
+            if (hasFocus) {
+                b.setTextColor(0xFF000000.toInt())
+                v.elevation = 12f
+                v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150L).start()
+            } else {
+                b.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
+                v.elevation = 0f
+                v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(120L).start()
+            }
+        }
 
         episodeAdapter = EpisodeAdapter { epIndex ->
             openPlayer(currentServerIndex, epIndex)
@@ -85,6 +99,10 @@ class DetailActivity : AppCompatActivity() {
             val eps = servers.getOrNull(targetServer)?.episodes ?: emptyList()
             val targetEp = if (savedEp in eps.indices) savedEp else 0
             openPlayer(targetServer, targetEp)
+        }
+
+        btnChooseServer.setOnClickListener {
+            showServerPickerDialog()
         }
 
         if (movieSlug.isNotBlank()) {
@@ -114,13 +132,13 @@ class DetailActivity : AppCompatActivity() {
                     tvDetailTitle.text = movieTitle
 
                     val metaParts = listOf(
-                        movie.originName,
                         movie.year,
                         movie.quality,
                         movie.lang,
-                        movie.episodeCurrent
+                        movie.episodeCurrent,
+                        movie.time
                     ).filter { it.isNotBlank() }
-                    tvDetailMeta.text = metaParts.joinToString("  •  ")
+                    tvDetailMeta.text = metaParts.joinToString("   •   ")
 
                     val cleanDesc = HtmlCompat.fromHtml(
                         movie.content,
@@ -128,8 +146,10 @@ class DetailActivity : AppCompatActivity() {
                     ).toString().trim()
                     tvDetailDesc.text = cleanDesc.ifBlank { "Chưa có mô tả cho phim này." }
 
-                    ivDetailPoster.load(movie.posterUrl.ifBlank { movie.thumbUrl }) { crossfade(true) }
-                    ivBackdrop.load(movie.thumbUrl.ifBlank { movie.posterUrl }) { crossfade(400) }
+                    ivBackdrop.load(movie.thumbUrl.ifBlank { movie.posterUrl }) {
+                        crossfade(400)
+                        size(1280, 720)
+                    }
                 }
 
                 servers = agg.servers
@@ -138,12 +158,12 @@ class DetailActivity : AppCompatActivity() {
                     val hasSaved = historyManager.getLastEpisodeIndex(movieSlug) >= 0
                     val savedServer = historyManager.getLastServerIndex(movieSlug)
                     currentServerIndex = if (hasSaved && savedServer in servers.indices) savedServer else 0
-                    buildServerButtons()
                     selectServer(currentServerIndex)
                     updateContinueButton()
                     btnPlayNow.requestFocus()
                 } else {
-                    tvEpisodeHeader.text = "Không tìm thấy luồng phát trực tiếp (.m3u8) từ các nguồn"
+                    btnChooseServer.text = "Không có nguồn phát (.m3u8)"
+                    btnChooseServer.isEnabled = false
                     btnPlayNow.isEnabled = false
                 }
             } catch (e: Exception) {
@@ -154,50 +174,36 @@ class DetailActivity : AppCompatActivity() {
         }
     }
 
-    private fun buildServerButtons() {
-        serverContainer.removeAllViews()
-        servers.forEachIndexed { idx, server ->
-            val isDub = server.isVietnameseDubbed()
-            val btn = Button(this).apply {
-                text = if (isDub) "★ ${server.serverName}" else server.serverName
-                isAllCaps = false
-                textSize = 12.5f
-                setTextColor(
-                    ContextCompat.getColor(
-                        this@DetailActivity,
-                        if (isDub) R.color.accent_green else R.color.text_primary
-                    )
-                )
-                setBackgroundResource(R.drawable.bg_tab_selector)
-                isFocusable = true
-                setPadding(24, 6, 24, 6)
-                val params = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    (38 * resources.displayMetrics.density).toInt()
-                )
-                params.marginEnd = (8 * resources.displayMetrics.density).toInt()
-                layoutParams = params
-                setOnClickListener {
-                    selectServer(idx)
-                }
+    private fun showServerPickerDialog() {
+        if (servers.isEmpty()) return
+        val items = servers.map { srv ->
+            val prefix = if (srv.isVietnameseDubbed()) "★ " else ""
+            "$prefix${srv.serverName} (${srv.episodes.size} tập)"
+        }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("Chọn Server phát (${servers.size} nguồn)")
+            .setSingleChoiceItems(items, currentServerIndex) { dialog, which ->
+                selectServer(which)
+                dialog.dismiss()
             }
-            FocusEffects.attachPopEffect(btn, scaleUp = 1.08f, elevationPx = 14f)
-            serverContainer.addView(btn)
-        }
+            .setNegativeButton("Đóng", null)
+            .show()
     }
 
     private fun selectServer(serverIdx: Int) {
         if (serverIdx !in servers.indices) return
         currentServerIndex = serverIdx
-        for (i in 0 until serverContainer.childCount) {
-            serverContainer.getChildAt(i).isSelected = (i == serverIdx)
-        }
         val srv = servers[serverIdx]
         currentEpisodes = srv.episodes
+        val isDub = srv.isVietnameseDubbed()
+
+        tvDetailTag.text = if (isDub) "VIETMOVIE  •  THUYẾT MINH THẬT" else "VIETMOVIE  •  VIETSUB"
+        btnChooseServer.text = "Server: ${srv.serverName} ▾"
+
         val savedServer = historyManager.getLastServerIndex(movieSlug)
         val savedEp = if (savedServer == serverIdx) historyManager.getLastEpisodeIndex(movieSlug) else -1
-        val dubHint = if (srv.isVietnameseDubbed()) " • Đã ưu tiên Thuyết Minh thật" else " • Có thể bật Thuyết minh AI khi xem"
-        tvEpisodeHeader.text = "${srv.serverName}  •  ${currentEpisodes.size} tập$dubHint"
+        tvEpisodeHeader.text = "Danh sách tập (${currentEpisodes.size} tập)  •  ${servers.size} server"
         episodeAdapter.submitList(currentEpisodes, savedEp)
     }
 
@@ -205,9 +211,9 @@ class DetailActivity : AppCompatActivity() {
         val lastEpIdx = historyManager.getLastEpisodeIndex(movieSlug)
         val lastEpName = historyManager.getLastEpisodeName(movieSlug)
         btnPlayNow.text = if (lastEpIdx >= 0 && lastEpName.isNotBlank()) {
-            "▶ Tiếp tục ($lastEpName)"
+            "▶   Tiếp tục ($lastEpName)"
         } else {
-            "▶ Xem ngay"
+            "▶   Xem ngay"
         }
     }
 
@@ -226,15 +232,23 @@ class DetailActivity : AppCompatActivity() {
         }
 
         val detail = currentDetail
+        val epName = eps[epIndex].name.ifBlank { "Tập ${epIndex + 1}" }
+        // Record to "Đang xem dở" Home Swimlane immediately!
+        historyManager.recordWatchedMovie(
+            slug = movieSlug,
+            name = movieTitle,
+            originName = detail?.originName ?: "",
+            posterUrl = detail?.posterUrl ?: "",
+            thumbUrl = detail?.thumbUrl ?: "",
+            year = detail?.year ?: "",
+            episodeName = epName,
+            lang = detail?.lang ?: "",
+            sourceLabel = preferredSource
+        )
+
         val intent = Intent(this, PlayerActivity::class.java).apply {
             putExtra("slug", movieSlug)
             putExtra("title", movieTitle)
-            putExtra("originName", detail?.originName ?: "")
-            putExtra("imdbId", detail?.imdbId ?: "")
-            putExtra("tmdbId", detail?.tmdbId ?: "")
-            putExtra("movieType", detail?.movieType ?: if (eps.size > 1) "tv" else "movie")
-            putExtra("season", detail?.season ?: 1)
-            putExtra("serverName", srv?.serverName ?: "")
             putExtra("serverIndex", serverIdx)
             putExtra("episodeIndex", epIndex)
             putStringArrayListExtra("episodeNames", names)

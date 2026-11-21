@@ -1,144 +1,129 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_dark"
     android:clipChildren="false">
 
+    <!-- Right-side full-bleed cinematic backdrop -->
     <ImageView
         android:id="@+id/ivBackdrop"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:alpha="0.32"
         android:scaleType="centerCrop" />
 
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_home_scrim" />
+        android:background="@drawable/bg_hero_scrim_left" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_hero_scrim_bottom" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipChildren="false"
-        android:clipToPadding="false"
         android:orientation="vertical"
-        android:padding="26dp">
+        android:paddingStart="42dp"
+        android:paddingTop="28dp"
+        android:paddingEnd="36dp"
+        android:paddingBottom="16dp">
 
+        <!-- Left Metadata & Vertical Action Stack (Netflix TV style) -->
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="500dp"
             android:layout_height="wrap_content"
             android:clipChildren="false"
-            android:orientation="horizontal">
+            android:orientation="vertical">
 
-            <androidx.cardview.widget.CardView
-                android:layout_width="160dp"
-                android:layout_height="230dp"
-                android:layout_marginEnd="24dp"
-                app:cardBackgroundColor="#181C26"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="10dp">
-
-                <ImageView
-                    android:id="@+id/ivDetailPoster"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="centerCrop" />
-            </androidx.cardview.widget.CardView>
-
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                android:id="@+id/tvDetailTag"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:clipChildren="false"
-                android:orientation="vertical">
+                android:letterSpacing="0.12"
+                android:text="VIETMOVIE  •  CHI TIẾT PHIM"
+                android:textColor="@color/netflix_red"
+                android:textSize="11sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/tvDetailTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="2"
-                    android:textColor="@color/text_primary"
-                    android:textSize="26sp"
-                    android:textStyle="bold" />
+            <TextView
+                android:id="@+id/tvDetailTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:textColor="@color/text_primary"
+                android:textSize="32sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/tvDetailMeta"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:textColor="@color/accent_amber"
-                    android:textSize="14sp" />
+            <TextView
+                android:id="@+id/tvDetailMeta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/accent_green"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/tvDetailDesc"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:ellipsize="end"
-                    android:lineSpacingExtra="3dp"
-                    android:maxLines="4"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
+            <TextView
+                android:id="@+id/tvDetailDesc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:ellipsize="end"
+                android:lineSpacingExtra="3dp"
+                android:maxLines="3"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:clipChildren="false"
-                    android:clipToPadding="false"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="4dp">
+            <!-- Vertical Action Buttons (Like Netflix TV Screenshot 2) -->
+            <Button
+                android:id="@+id/btnPlayNow"
+                android:layout_width="290dp"
+                android:layout_height="40dp"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_netflix_play_btn"
+                android:focusable="true"
+                android:gravity="center_vertical|start"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="▶   Xem ngay"
+                android:textAllCaps="false"
+                android:textColor="#000000"
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
-                    <Button
-                        android:id="@+id/btnPlayNow"
-                        android:layout_width="wrap_content"
-                        android:layout_height="42dp"
-                        android:layout_marginEnd="12dp"
-                        android:background="@drawable/bg_tab_selector"
-                        android:focusable="true"
-                        android:paddingStart="22dp"
-                        android:paddingEnd="22dp"
-                        android:text="▶ Xem ngay"
-                        android:textAllCaps="false"
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-
-                    <HorizontalScrollView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:clipChildren="false"
-                        android:clipToPadding="false"
-                        android:paddingTop="4dp"
-                        android:paddingBottom="4dp"
-                        android:scrollbars="none">
-
-                        <LinearLayout
-                            android:id="@+id/serverContainer"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:clipChildren="false"
-                            android:orientation="horizontal"
-                            android:paddingStart="2dp"
-                            android:paddingEnd="8dp" />
-                    </HorizontalScrollView>
-                </LinearLayout>
-            </LinearLayout>
+            <Button
+                android:id="@+id/btnChooseServer"
+                android:layout_width="290dp"
+                android:layout_height="38dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_netflix_secondary_btn"
+                android:ellipsize="end"
+                android:focusable="true"
+                android:gravity="center_vertical|start"
+                android:maxLines="1"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:text="Đang tìm bản Thuyết Minh..."
+                android:textAllCaps="false"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- Bottom Episodes Section -->
         <TextView
             android:id="@+id/tvEpisodeHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp"
-            android:text="Đang dò bản Thuyết Minh &amp; nguồn phát từ 3 kho phim..."
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="6dp"
+            android:text="Danh sách tập"
             android:textColor="@color/text_primary"
             android:textSize="15sp"
             android:textStyle="bold" />
@@ -150,14 +135,13 @@
             android:layout_weight="1"
             android:clipChildren="false"
             android:clipToPadding="false"
-            android:padding="6dp" />
-
+            android:padding="4dp" />
     </LinearLayout>
 
     <ProgressBar
         android:id="@+id/detailProgressBar"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="46dp"
+        android:layout_height="46dp"
         android:layout_gravity="center"
         android:visibility="gone" />
 </FrameLayout>

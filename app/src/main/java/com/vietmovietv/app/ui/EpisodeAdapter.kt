@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.vietmovietv.app.R
 import com.vietmovietv.app.data.EpisodeData
@@ -35,7 +36,19 @@ class EpisodeAdapter(
         holder.tvName.setOnClickListener {
             onEpisodeClick(position)
         }
-        FocusEffects.attachPopEffect(holder.tvName, scaleUp = 1.09f, elevationPx = 12f)
+        holder.tvName.setOnFocusChangeListener { v, hasFocus ->
+            v.animate().cancel()
+            val tv = v as TextView
+            if (hasFocus) {
+                tv.setTextColor(0xFF000000.toInt())
+                v.elevation = 10f
+                v.animate().scaleX(1.08f).scaleY(1.08f).setDuration(130L).start()
+            } else {
+                tv.setTextColor(ContextCompat.getColor(v.context, R.color.text_primary))
+                v.elevation = 0f
+                v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100L).start()
+            }
+        }
     }
 
     override fun getItemCount(): Int = episodes.size

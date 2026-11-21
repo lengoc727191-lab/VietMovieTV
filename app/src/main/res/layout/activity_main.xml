@@ -5,352 +5,527 @@
     android:background="@color/bg_dark"
     android:clipChildren="false">
 
-    <!-- Dynamic Netflix-style Backdrop synced with focused movie -->
-    <ImageView
-        android:id="@+id/ivHomeBackdrop"
+    <!-- Main Right Content Area (offset 64dp for collapsed Left Rail) -->
+    <FrameLayout
+        android:id="@+id/contentArea"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:alpha="0.30"
-        android:scaleType="centerCrop" />
+        android:layout_marginStart="64dp"
+        android:clipChildren="false">
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bg_home_scrim" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:clipChildren="false"
-        android:clipToPadding="false"
-        android:orientation="vertical"
-        android:paddingStart="24dp"
-        android:paddingTop="14dp"
-        android:paddingEnd="24dp"
-        android:paddingBottom="10dp">
-
-        <!-- Row 1: Brand + Category Pills + Source + Search -->
-        <LinearLayout
-            android:id="@+id/topBar"
+        <!-- ==================== MODE A: NETFLIX HOME (HERO + SWIMLANES) ==================== -->
+        <FrameLayout
+            android:id="@+id/homeContainer"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:clipChildren="false"
-            android:clipToPadding="false"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingTop="4dp"
-            android:paddingBottom="8dp">
+            android:layout_height="match_parent"
+            android:clipChildren="false">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="14dp"
-                android:letterSpacing="0.06"
-                android:text="VIETMOVIE"
-                android:textColor="@color/netflix_red"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+            <!-- Large Hero Backdrop Image (Top 62% of screen, aligned right) -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="340dp"
+                android:layout_gravity="top">
 
-            <HorizontalScrollView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="10dp"
-                android:layout_weight="1"
+                <ImageView
+                    android:id="@+id/ivHeroBackdrop"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_hero_scrim_left" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="150dp"
+                    android:layout_gravity="bottom"
+                    android:background="@drawable/bg_hero_scrim_bottom" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
                 android:clipChildren="false"
-                android:clipToPadding="false"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:scrollbars="none">
+                android:orientation="vertical">
 
+                <!-- Top Hero Info Panel (~46% of screen height) -->
                 <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:id="@+id/heroInfoPanel"
+                    android:layout_width="490dp"
+                    android:layout_height="245dp"
                     android:clipChildren="false"
-                    android:clipToPadding="false"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="2dp"
-                    android:paddingEnd="6dp">
+                    android:gravity="bottom"
+                    android:orientation="vertical"
+                    android:paddingStart="24dp"
+                    android:paddingTop="18dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="10dp">
 
-                    <Button
-                        android:id="@+id/tabNew"
+                    <TextView
+                        android:id="@+id/tvHeroTag"
                         android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginEnd="7dp"
-                        android:background="@drawable/bg_tab_selector"
-                        android:focusable="true"
-                        android:minWidth="0dp"
-                        android:paddingStart="13dp"
-                        android:paddingEnd="13dp"
-                        android:text="Mới nhất"
-                        android:textAllCaps="false"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp" />
-
-                    <Button
-                        android:id="@+id/tabPopular"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginEnd="7dp"
-                        android:background="@drawable/bg_tab_selector"
-                        android:focusable="true"
-                        android:minWidth="0dp"
-                        android:paddingStart="13dp"
-                        android:paddingEnd="13dp"
-                        android:text="Xem nhiều"
-                        android:textAllCaps="false"
-                        android:textColor="@color/accent_amber"
-                        android:textSize="13sp"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.12"
+                        android:text="VIETMOVIE  •  TUYỂN CHỌN"
+                        android:textColor="@color/netflix_red"
+                        android:textSize="11sp"
                         android:textStyle="bold" />
 
-                    <Button
-                        android:id="@+id/tabDubbed"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginEnd="7dp"
-                        android:background="@drawable/bg_tab_selector"
-                        android:focusable="true"
-                        android:minWidth="0dp"
-                        android:paddingStart="13dp"
-                        android:paddingEnd="13dp"
-                        android:text="Thuyết Minh"
-                        android:textAllCaps="false"
+                    <TextView
+                        android:id="@+id/tvHeroTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:text="Đang tải kho phim..."
+                        android:textColor="@color/text_primary"
+                        android:textSize="30sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvHeroMeta"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
                         android:textColor="@color/accent_green"
                         android:textSize="13sp"
                         android:textStyle="bold" />
 
-                    <Button
-                        android:id="@+id/tabSeries"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginEnd="7dp"
-                        android:background="@drawable/bg_tab_selector"
-                        android:focusable="true"
-                        android:minWidth="0dp"
-                        android:paddingStart="13dp"
-                        android:paddingEnd="13dp"
-                        android:text="Phim Bộ"
-                        android:textAllCaps="false"
-                        android:textColor="@color/text_primary"
+                    <TextView
+                        android:id="@+id/tvHeroDesc"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:ellipsize="end"
+                        android:lineSpacingExtra="2dp"
+                        android:maxLines="2"
+                        android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
-                    <Button
-                        android:id="@+id/tabSingle"
+                    <LinearLayout
                         android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginEnd="7dp"
-                        android:background="@drawable/bg_tab_selector"
-                        android:focusable="true"
-                        android:minWidth="0dp"
-                        android:paddingStart="13dp"
-                        android:paddingEnd="13dp"
-                        android:text="Phim Lẻ"
-                        android:textAllCaps="false"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:clipChildren="false"
+                        android:orientation="horizontal">
 
-                    <Button
-                        android:id="@+id/tabAnime"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginEnd="7dp"
-                        android:background="@drawable/bg_tab_selector"
-                        android:focusable="true"
-                        android:minWidth="0dp"
-                        android:paddingStart="13dp"
-                        android:paddingEnd="13dp"
-                        android:text="Hoạt Hình"
-                        android:textAllCaps="false"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp" />
+                        <Button
+                            android:id="@+id/btnHeroPlay"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:layout_marginEnd="10dp"
+                            android:background="@drawable/bg_netflix_play_btn"
+                            android:focusable="true"
+                            android:minWidth="0dp"
+                            android:paddingStart="18dp"
+                            android:paddingEnd="18dp"
+                            android:text="▶  Xem ngay"
+                            android:textAllCaps="false"
+                            android:textColor="#000000"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
 
-                    <Button
-                        android:id="@+id/tabTvShows"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:background="@drawable/bg_tab_selector"
-                        android:focusable="true"
-                        android:minWidth="0dp"
-                        android:paddingStart="13dp"
-                        android:paddingEnd="13dp"
-                        android:text="TV Shows"
-                        android:textAllCaps="false"
-                        android:textColor="@color/text_primary"
-                        android:textSize="13sp" />
+                        <Button
+                            android:id="@+id/btnHeroInfo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="36dp"
+                            android:background="@drawable/bg_netflix_secondary_btn"
+                            android:focusable="true"
+                            android:minWidth="0dp"
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:text="Chi tiết"
+                            android:textAllCaps="false"
+                            android:textColor="@color/text_primary"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
                 </LinearLayout>
-            </HorizontalScrollView>
 
-            <Button
-                android:id="@+id/btnSource"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_tab_selector"
-                android:focusable="true"
-                android:minWidth="0dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:text="Nguồn: Tự động"
-                android:textAllCaps="false"
-                android:textColor="@color/accent_cyan"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+                <!-- Bottom Horizontal Swimlanes (Rows of Posters) -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:clipChildren="false">
 
-            <Button
-                android:id="@+id/btnSearch"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:background="@drawable/bg_tab_selector"
-                android:focusable="true"
-                android:minWidth="0dp"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:text="Tìm kiếm"
-                android:textAllCaps="false"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvHomeSections"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:clipChildren="false"
+                        android:clipToPadding="false"
+                        android:paddingBottom="24dp" />
 
-        <!-- Row 2: Inline Instant Search Bar (Live results as you type!) -->
+                    <ProgressBar
+                        android:id="@+id/homeProgressBar"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center"
+                        android:visibility="gone" />
+                </FrameLayout>
+            </LinearLayout>
+        </FrameLayout>
+
+        <!-- ==================== MODE B: BROWSE CATEGORY / SEARCH GRID ==================== -->
         <LinearLayout
-            android:id="@+id/searchBarContainer"
+            android:id="@+id/browseContainer"
             android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:layout_marginBottom="8dp"
-            android:background="@drawable/bg_search_box"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="8dp"
+            android:layout_height="match_parent"
+            android:background="@color/bg_dark"
+            android:clipChildren="false"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingTop="18dp"
+            android:paddingEnd="22dp"
+            android:paddingBottom="8dp"
             android:visibility="gone">
 
-            <EditText
-                android:id="@+id/etSearch"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:background="@null"
-                android:hint="Gõ tên phim để tự động hiện kết quả ngay..."
-                android:imeOptions="actionSearch"
-                android:inputType="text"
+            <!-- Header Row: Category Title + Country/Genre Filters -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:clipChildren="false"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvBrowseTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="18dp"
+                    android:text="Phim Bộ"
+                    android:textColor="@color/text_primary"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btnFilterCountry"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_netflix_secondary_btn"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="Quốc gia: Tất cả ▾"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btnFilterGenre"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_netflix_secondary_btn"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="Thể loại: Tất cả ▾"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btnResetFilter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/bg_netflix_secondary_btn"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="✕ Xóa lọc"
+                    android:textAllCaps="false"
+                    android:textColor="@color/netflix_red"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvBrowseStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:gravity="end"
+                    android:maxLines="1"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- Instant Live Search Box (visible only in Search mode) -->
+            <LinearLayout
+                android:id="@+id/searchBoxContainer"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/bg_search_box"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="10dp"
+                android:visibility="gone">
+
+                <EditText
+                    android:id="@+id/etSearch"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:hint="Gõ tên phim để hiện kết quả ngay..."
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:singleLine="true"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_muted"
+                    android:textSize="15sp" />
+
+                <Button
+                    android:id="@+id/btnClearSearch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:background="@drawable/bg_netflix_secondary_btn"
+                    android:focusable="true"
+                    android:minWidth="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="Xóa"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- Focused Movie Title Preview Strip for Browse Grid -->
+            <TextView
+                android:id="@+id/tvBrowseFocusedTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:ellipsize="end"
                 android:maxLines="1"
-                android:singleLine="true"
                 android:textColor="@color/text_primary"
-                android:textColorHint="@color/text_secondary"
-                android:textSize="15sp" />
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
 
-            <Button
-                android:id="@+id/btnCloseSearch"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:background="@drawable/bg_tab_selector"
-                android:focusable="true"
-                android:minWidth="0dp"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:text="Đóng"
-                android:textAllCaps="false"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp" />
+            <!-- Clean 6-Column Poster Grid -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipChildren="false">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvBrowseGrid"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="18dp" />
+
+                <ProgressBar
+                    android:id="@+id/browseProgressBar"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+            </FrameLayout>
         </LinearLayout>
+    </FrameLayout>
 
-        <!-- Row 3: Country & Genre Filter Bar (Works across ALL tabs!) + Status -->
-        <LinearLayout
-            android:layout_width="match_parent"
+    <!-- ==================== COLLAPSIBLE LEFT NAVIGATION RAIL (NETFLIX TV) ==================== -->
+    <LinearLayout
+        android:id="@+id/navRail"
+        android:layout_width="64dp"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_nav_rail"
+        android:elevation="24dp"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingStart="8dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="18dp">
+
+        <!-- Brand Mark 'V' -->
+        <TextView
+            android:id="@+id/tvBrandMark"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:clipChildren="false"
-            android:clipToPadding="false"
+            android:layout_marginStart="12dp"
+            android:layout_marginBottom="16dp"
+            android:text="V"
+            android:textColor="@color/netflix_red"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/navSearch"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_nav_item"
+            android:clickable="true"
+            android:focusable="true"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp">
-
-            <Button
-                android:id="@+id/btnFilterCountry"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_tab_selector"
-                android:focusable="true"
-                android:minWidth="0dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:text="Quốc gia: Tất cả ▾"
-                android:textAllCaps="false"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/btnFilterGenre"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_tab_selector"
-                android:focusable="true"
-                android:minWidth="0dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:text="Thể loại: Tất cả ▾"
-                android:textAllCaps="false"
-                android:textColor="@color/text_primary"
-                android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/btnResetFilter"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_marginEnd="10dp"
-                android:background="@drawable/bg_tab_selector"
-                android:focusable="true"
-                android:minWidth="0dp"
-                android:paddingStart="11dp"
-                android:paddingEnd="11dp"
-                android:text="✕ Xóa lọc"
-                android:textAllCaps="false"
-                android:textColor="@color/accent_amber"
-                android:textSize="12sp"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/tvStatus"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:gravity="end"
-                android:maxLines="1"
-                android:text="Đang tải danh sách phim..."
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+            <View android:id="@+id/indSearch" android:layout_width="3dp" android:layout_height="20dp" android:layout_marginEnd="9dp" android:background="@color/netflix_red" android:visibility="invisible" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_nav_search" />
+            <TextView android:id="@+id/lblSearch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:maxLines="1" android:text="Tìm kiếm" android:textColor="@color/text_primary" android:textSize="14sp" android:visibility="gone" />
         </LinearLayout>
 
-        <!-- Content Grid -->
-        <FrameLayout
+        <LinearLayout
+            android:id="@+id/navHome"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_nav_item"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+            <View android:id="@+id/indHome" android:layout_width="3dp" android:layout_height="20dp" android:layout_marginEnd="9dp" android:background="@color/netflix_red" android:visibility="visible" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_nav_home" />
+            <TextView android:id="@+id/lblHome" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:maxLines="1" android:text="Trang chủ" android:textColor="@color/text_primary" android:textSize="14sp" android:textStyle="bold" android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navPopular"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_nav_item"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+            <View android:id="@+id/indPopular" android:layout_width="3dp" android:layout_height="20dp" android:layout_marginEnd="9dp" android:background="@color/netflix_red" android:visibility="invisible" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_nav_fire" />
+            <TextView android:id="@+id/lblPopular" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:maxLines="1" android:text="Xem nhiều" android:textColor="@color/text_primary" android:textSize="14sp" android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navDubbed"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_nav_item"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+            <View android:id="@+id/indDubbed" android:layout_width="3dp" android:layout_height="20dp" android:layout_marginEnd="9dp" android:background="@color/netflix_red" android:visibility="invisible" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_nav_mic" />
+            <TextView android:id="@+id/lblDubbed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:maxLines="1" android:text="Thuyết Minh" android:textColor="@color/text_primary" android:textSize="14sp" android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navSeries"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_nav_item"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+            <View android:id="@+id/indSeries" android:layout_width="3dp" android:layout_height="20dp" android:layout_marginEnd="9dp" android:background="@color/netflix_red" android:visibility="invisible" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_nav_series" />
+            <TextView android:id="@+id/lblSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:maxLines="1" android:text="Phim Bộ" android:textColor="@color/text_primary" android:textSize="14sp" android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navSingle"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_nav_item"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+            <View android:id="@+id/indSingle" android:layout_width="3dp" android:layout_height="20dp" android:layout_marginEnd="9dp" android:background="@color/netflix_red" android:visibility="invisible" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_nav_movie" />
+            <TextView android:id="@+id/lblSingle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:maxLines="1" android:text="Phim Lẻ" android:textColor="@color/text_primary" android:textSize="14sp" android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navAnime"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_nav_item"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+            <View android:id="@+id/indAnime" android:layout_width="3dp" android:layout_height="20dp" android:layout_marginEnd="9dp" android:background="@color/netflix_red" android:visibility="invisible" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_nav_anime" />
+            <TextView android:id="@+id/lblAnime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:maxLines="1" android:text="Hoạt Hình" android:textColor="@color/text_primary" android:textSize="14sp" android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/navTvShows"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_nav_item"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+            <View android:id="@+id/indTvShows" android:layout_width="3dp" android:layout_height="20dp" android:layout_marginEnd="9dp" android:background="@color/netflix_red" android:visibility="invisible" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_nav_tvshow" />
+            <TextView android:id="@+id/lblTvShows" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:maxLines="1" android:text="TV Shows" android:textColor="@color/text_primary" android:textSize="14sp" android:visibility="gone" />
+        </LinearLayout>
+
+        <View
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipChildren="false"
-            android:clipToPadding="false">
+            android:layout_weight="1" />
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvMovies"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipChildren="false"
-                android:clipToPadding="false"
-                android:paddingStart="4dp"
-                android:paddingTop="8dp"
-                android:paddingEnd="4dp"
-                android:paddingBottom="16dp" />
-
-            <ProgressBar
-                android:id="@+id/progressBar"
-                android:layout_width="46dp"
-                android:layout_height="46dp"
-                android:layout_gravity="center"
-                android:visibility="gone" />
-        </FrameLayout>
+        <LinearLayout
+            android:id="@+id/navSource"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:background="@drawable/bg_nav_item"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+            <View android:layout_width="3dp" android:layout_height="20dp" android:layout_marginEnd="9dp" android:visibility="invisible" />
+            <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_nav_source" />
+            <TextView android:id="@+id/lblSource" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="14dp" android:maxLines="1" android:text="Nguồn: Tự động" android:textColor="@color/accent_cyan" android:textSize="13sp" android:visibility="gone" />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>
