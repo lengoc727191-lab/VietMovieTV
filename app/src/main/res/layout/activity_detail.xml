@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark">
+
+    <!-- Background Backdrop -->
+    <ImageView
+        android:id="@+id/ivBackdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.22"
+        android:scaleType="centerCrop" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="28dp">
+
+        <!-- Top Movie Info Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/ivDetailPoster"
+                android:layout_width="160dp"
+                android:layout_height="230dp"
+                android:layout_marginEnd="24dp"
+                android:background="#1F2937"
+                android:scaleType="centerCrop" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvDetailTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:textColor="@color/text_primary"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvDetailMeta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/accent_amber"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvDetailDesc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:ellipsize="end"
+                    android:lineSpacingExtra="3dp"
+                    android:maxLines="4"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnPlayNow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="44dp"
+                        android:layout_marginEnd="14dp"
+                        android:background="@drawable/bg_button_selector"
+                        android:focusable="true"
+                        android:paddingStart="22dp"
+                        android:paddingEnd="22dp"
+                        android:text="Xem ngay"
+                        android:textAllCaps="false"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:id="@+id/serverContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Episodes Section -->
+        <TextView
+            android:id="@+id/tvEpisodeHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="8dp"
+            android:text="Danh sách tập phim"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvEpisodes"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:padding="4dp" />
+
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/detailProgressBar"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+</FrameLayout>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#0D1117</color>
+    <color name="bg_surface">#161B22</color>
+    <color name="bg_card">#1F2630</color>
+    <color name="accent_amber">#F59E0B</color>
+    <color name="accent_amber_dark">#B45309</color>
+    <color name="text_primary">#F3F4F6</color>
+    <color name="text_secondary">#9CA3AF</color>
+    <color name="overlay_dark">#CC0D1117</color>
+    <color name="badge_bg">#DD111827</color>
+</resources>
